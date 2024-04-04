@@ -38,12 +38,13 @@ class NaiveBayes:
 
         return text_data_vectorized.toarray(), labels
 
-    def fit(self, X, y):
+    def fit(self, X, y, alpha=1.0):
         """
         Fit the model given the data
 
         :param X: Input data (n_samples, n_features)
         :param y: Target data (n_samples,)
+        :param alpha: Laplace smoothing parameter (default: 1.0)
         :return: None
         """
         self.classes = np.unique(y)
@@ -102,8 +103,7 @@ class NaiveBayes:
         """
         if X.shape[1] < 2:
             raise ValueError("plot_decision_boundary only works for 2D datasets.")
-        if X.shape[1] >= 2:
-            # use t-SNE to reduce dimensionality to 2
+        if X.shape[1] > 2:
             from sklearn.manifold import TSNE
             X = TSNE(n_components=2).fit_transform(X)
             print("Finished t-SNE..., shape: ", X.shape)
@@ -137,7 +137,11 @@ class NaiveBayes:
 
 
 if __name__ == '__main__':
-    X, y = NaiveBayes.load_and_vectorize_data("../data/spam.csv")
+    # X, y = NaiveBayes.load_and_vectorize_data("../data/spam.csv")
+    # Mock data X and y has cosine relationship
+    X = np.random.rand(100, 2)
+    y = np.where(np.dot(X, [1, 1]) > 1, 1, 0)
+
     # Fit model
     priors = [0.5, 0.5]
     model = NaiveBayes()
@@ -147,4 +151,4 @@ if __name__ == '__main__':
     print(f"Accuracy: {model.score(X, y)}")
 
     # Plot priors and likelihoods
-    model.plot_decision_boundary(X[:10], y[:10])
+    model.plot_decision_boundary(X, y)
