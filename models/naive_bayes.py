@@ -100,8 +100,13 @@ class NaiveBayes:
         :param resolution: The resolution of the meshgrid for plotting
         :return: None
         """
-        if X.shape[1] != 2:
+        if X.shape[1] < 2:
             raise ValueError("plot_decision_boundary only works for 2D datasets.")
+        if X.shape[1] >= 2:
+            # use t-SNE to reduce dimensionality to 2
+            from sklearn.manifold import TSNE
+            X = TSNE(n_components=2).fit_transform(X)
+            print("Finished t-SNE..., shape: ", X.shape)
 
         markers = ('s', 'x', 'o', '^', 'v')
         colors = ('red', 'blue', 'lightgreen', 'gray', 'cyan')
@@ -142,4 +147,4 @@ if __name__ == '__main__':
     print(f"Accuracy: {model.score(X, y)}")
 
     # Plot priors and likelihoods
-    model.plot_decision_boundary(X, y)
+    model.plot_decision_boundary(X[:10], y[:10])
