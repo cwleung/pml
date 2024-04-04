@@ -24,7 +24,18 @@ class Gaussian(Distribution):
         0.5 * (log(sigma2 / sigma1) + (sigma1^2 + (mu1 - mu2)^2) / sigma2^2 - 1)
         """
         return 0.5 * (np.log(other.sigma / self.sigma) + (
-                    self.sigma ** 2 + (self.mu - other.mu) ** 2) / other.sigma ** 2 - 1)
+                self.sigma ** 2 + (self.mu - other.mu) ** 2) / other.sigma ** 2 - 1)
+
+    def update(self, data):
+        n = len(data)
+        mu_n = sum(data) / n
+        s_n_sq = sum((x - mu_n) ** 2 for x in data) / n
+
+        mu_new = (self.sigma ** 2 * mu_n + n * s_n_sq * self.mu) / (self.sigma ** 2 + n * s_n_sq)
+        sigma_new_sq = (self.sigma ** 2 * s_n_sq) / (self.sigma ** 2 + n * s_n_sq)
+
+        self.mu = mu_new
+        self.sigma = np.sqrt(sigma_new_sq)
 
     def __add__(self, other):
         return Gaussian(mu=self.mu + other.mu, sigma=self.sigma + other.sigma)

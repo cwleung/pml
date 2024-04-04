@@ -38,6 +38,24 @@ class MultivariateGaussian(Distribution):
     def prec_mult(self, x):
         return np.linalg.cholesky(self.sigma) @ np.linalg.solve(self.L, x)
 
+    def update(self, data: np.ndarray):
+        """
+        Update the Multivariate Gaussian distribution with new data samples.
+
+        Args:
+            data (numpy.ndarray): New data samples (each row is a sample).
+        """
+        n = data.shape[0]  # Number of samples
+        mu_n = np.mean(data, axis=0)  # Sample mean
+        sigma_n = np.cov(data.T, bias=True)  # Sample covariance
+
+        # Update mean and covariance
+        mu_new = (self.sigma @ mu_n + n * sigma_n @ self.mu) / (self.sigma + n * sigma_n)
+        sigma_new = self.sigma @ sigma_n / (self.sigma + n * sigma_n)
+
+        self.mu = mu_new
+        self.sigma = sigma_new
+
     def __add__(self, other):
         return MultivariateGaussian(mu=self.mu + other.mu, sigma=self.sigma + other.sigma)
 
@@ -65,8 +83,8 @@ class MultivariateGaussian(Distribution):
         delta_mu_t = delta_mu.T
         return 0.5 * (np.log(np.linalg.det(other.sigma) / np.linalg.det(self.sigma)) - d +
                       np.trace(np.dot(inv_other_sigma, self.sigma)) +
-                        np.dot(np.dot(delta_mu.T, inv_other_sigma), delta_mu) +
-                        np.trace(np.dot(np.dot(delta_sigma, inv_other_sigma), delta_sigma)))
+                      np.dot(np.dot(delta_mu.T, inv_other_sigma), delta_mu) +
+                      np.trace(np.dot(np.dot(delta_sigma, inv_other_sigma), delta_sigma)))
 
     def plot(self, n_samples=1000, n_dim=2):
         """Plot the 2-d gaussian distribution"""
