@@ -56,6 +56,18 @@ class MultivariateGaussian(Distribution):
         self.mu = mu_new
         self.sigma = sigma_new
 
+    @staticmethod
+    def mle(data: np.ndarray):
+        """
+        Maximum likelihood estimation of the Multivariate Gaussian distribution.
+
+        Args:
+            data (numpy.ndarray): Data samples (each row is a sample).
+        """
+        mu = np.mean(data, axis=0)
+        sigma = np.cov(data.T, bias=True)
+        return MultivariateGaussian(mu=mu, sigma=sigma)
+
     def __add__(self, other):
         return MultivariateGaussian(mu=self.mu + other.mu, sigma=self.sigma + other.sigma)
 

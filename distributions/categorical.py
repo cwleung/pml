@@ -24,8 +24,22 @@ class Categorical(Distribution):
     def kl_divergence(self, other):
         return np.sum(self.p * np.log(self.p / other.p))
 
-    def log_pdf(self, x:np.array):
+    def log_pdf(self, x: np.array):
         return np.log(self.p[x])
+
+    @staticmethod
+    def mle(data: np.ndarray):
+        """
+        Maximum likelihood estimation of the Categorical distribution.
+        :param data: Data samples (each row is a sample). (n_samples, n_features)
+        :return: None (update the distribution)
+        """
+        # Compute the frequency of each category
+        counts = np.bincount(data.squeeze(), minlength=len(np.unique(data)))
+
+        # Normalize the counts to get the new probabilities
+        p = counts / counts.sum()
+        return Categorical(p=p)
 
     def plot(self):
         import matplotlib.pyplot as plt
@@ -39,3 +53,6 @@ if __name__ == '__main__':
     cat.plot()
     print(cat.sample(10))
     print(cat.log_pdf([0, 1, 2, 3]))
+
+    # example of mle
+    Categorical.mle(data=np.array([[0], [0], [1], [1], [2], [2], [3], [3], [4]])).plot()
