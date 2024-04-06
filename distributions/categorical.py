@@ -28,24 +28,17 @@ class Categorical(Distribution):
         return np.log(self.p[x])
 
     @staticmethod
-    def mle(data: np.ndarray):
+    def mle(data: np.ndarray, alpha: float = 1.0):
         """
-        Maximum likelihood estimation of the Categorical distribution.
+        Maximum likelihood estimation of the Categorical distribution with Laplace smoothing.
         :param data: Data samples (each row is a sample). (n_samples, n_features)
+        :param alpha: Laplace smoothing parameter (default is 1.0)
         :return: None (update the distribution)
         """
-        # Compute the frequency of each category
         counts = np.bincount(data.squeeze(), minlength=len(np.unique(data)))
-
-        # Normalize the counts to get the new probabilities
+        counts += alpha
         p = counts / counts.sum()
         return Categorical(p=p)
-
-    def plot(self):
-        import matplotlib.pyplot as plt
-        print(f"Distribution: {self.p}")
-        plt.bar(range(len(self.p)), self.p)
-        plt.show()
 
 
 if __name__ == '__main__':

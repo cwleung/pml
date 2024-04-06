@@ -57,15 +57,18 @@ class MultivariateGaussian(Distribution):
         self.sigma = sigma_new
 
     @staticmethod
-    def mle(data: np.ndarray):
+    def mle(data: np.ndarray, alpha=1.0):
         """
-        Maximum likelihood estimation of the Multivariate Gaussian distribution.
+        Maximum likelihood estimation of the Multivariate Gaussian distribution with Laplace smoothing.
 
         Args:
             data (numpy.ndarray): Data samples (each row is a sample).
+            alpha (float): Laplace smoothing parameter (default is 1.0).
         """
-        mu = np.mean(data, axis=0)
-        sigma = np.cov(data.T, bias=True)
+        n, d = data.shape
+        mu = (np.sum(data, axis=0) + alpha * d) / (n + alpha)
+        centered_data = data - mu
+        sigma = (np.dot(centered_data.T, centered_data) + alpha * np.eye(d)) / (n + alpha)
         return MultivariateGaussian(mu=mu, sigma=sigma)
 
     def __add__(self, other):
