@@ -23,6 +23,11 @@ class Distribution(ABC):
     # TODO: Implement entropy
     def entropy(self):
         """Entropy of the distribution"""
+        raise NotImplementedError("Entropy not implemented for this distribution")
+
+    def mle(self, data: np.ndarray):
+        """Maximum likelihood estimation of the distribution"""
+        raise NotImplementedError("MLE not implemented for this distribution")
 
     @abstractmethod
     def kl_divergence(self, other):

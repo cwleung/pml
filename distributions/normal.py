@@ -48,3 +48,9 @@ class Gaussian(Distribution):
 
     def __truediv__(self, other):
         return Gaussian(mu=self.mu / other, sigma=self.sigma / other)
+
+    @staticmethod
+    def mle(data, alpha=1.0):
+        mu = np.mean(data)
+        sigma = np.std(data)
+        return Gaussian(mu=mu, sigma=sigma)

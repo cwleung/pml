@@ -4,8 +4,12 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 
+from distributions.multivariate import MultivariateGaussian
+from distributions.normal import Gaussian
+from models.base_model import SupBaseModel
 
-class NaiveBayes:
+
+class NaiveBayes(SupBaseModel):
     def __init__(self):
         self.priors = None
         self.likelihoods = None
@@ -21,18 +25,14 @@ class NaiveBayes:
         :param filepath: Path to the CSV file
         :return: Tuple containing vectorized text data and labels
         """
-        # Load the data
         data = pd.read_csv(filepath)
 
-        # Check if the required columns are in the dataframe
         if 'text' not in data.columns or 'label' not in data.columns:
             raise ValueError("CSV file must contain 'text' and 'label' columns.")
 
-            # Extract text data and labels
         texts = data['text'].values
         labels = data['label'].values
 
-        # Vectorize the text data
         vectorizer = CountVectorizer()
         text_data_vectorized = vectorizer.fit_transform(texts)
 
@@ -55,22 +55,16 @@ class NaiveBayes:
         self.likelihoods = []
 
         for i, c in enumerate(self.classes):
-            # all samples with class c
             X_c = X[y == c]
-            # calculate prior
             self.priors[i] = len(X_c) / len(X)
-            # calculate likelihood for each feature
-            class_likelihoods = []
-            for j in range(self.n_features):
-                # calculate mean and variance of feature j for class c
-                mean = np.mean(X_c[:, j])
-                var = np.var(X_c[:, j])
-                class_likelihoods.append({'mean': mean, 'var': var})
-            self.likelihoods.append(class_likelihoods)
+            # TODO need to find a way to check if the feature is categorical or continuous
+            # likelihood = MultivariateGaussian.mle(X_c, alpha=alpha)
+            likelihood = Gaussian.mle(X_c, alpha=alpha)
+            self.likelihoods.append(likelihood)
 
     def predict(self, X):
         """
-        Predict the class of each sample
+        Predict the class of each sample.
 
         :param X: Input data (n_samples, n_features)
         :return: Predicted classes (n_samples,)
@@ -79,14 +73,9 @@ class NaiveBayes:
         posteriors = np.zeros((n_samples, self.n_classes))
 
         for i, c in enumerate(self.classes):
-            for j in range(self.n_features):
-                mean = self.likelihoods[i][j]['mean']
-                var = self.likelihoods[i][j]['var']
-                # Calculate the log probability density of Gaussian distribution
-                likelihood = -0.5 * np.log(2 * np.pi * var) - 0.5 * ((X[:, j] - mean) ** 2) / var
-                posteriors[:, i] += likelihood
-            posteriors[:, i] += np.log(self.priors[i])
-
+            prior_term = np.log(self.priors[i])
+            likelihood_term = self.likelihoods[i].log_pdf(X).sum(axis=1)
+            posteriors[:, i] = prior_term + likelihood_term
         return self.classes[np.argmax(posteriors, axis=1)]
 
     def score(self, X, y):
@@ -96,10 +85,14 @@ class NaiveBayes:
         """
         Plots the decision boundary for a 2D dataset.
 
-        :param X: Input data (n_samples, 2)
-        :param y: Target labels (n_samples,)
-        :param resolution: The resolution of the meshgrid for plotting
-        :return: None
+        Parameters:
+        X (numpy.ndarray): Input data (n_samples, n_features)
+        y (numpy.ndarray): Target labels (n_samples,)
+        features (list): The indices of the features to be used for the plot (default: [0, 1])
+        resolution (float): The resolution of the meshgrid for plotting (default: 0.01)
+
+        Returns:
+        None
         """
         if X.shape[1] < 2:
             raise ValueError("plot_decision_boundary only works for 2D datasets.")

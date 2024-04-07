@@ -36,6 +36,12 @@ class MultivariateGaussian(Distribution):
         return np.linalg.inv(self.sigma)
 
     def prec_mult(self, x):
+        """
+        Multiply the precision matrix with a vector.
+
+        :param x:
+        :return:
+        """
         return np.linalg.cholesky(self.sigma) @ np.linalg.solve(self.L, x)
 
     def update(self, data: np.ndarray):
@@ -82,23 +88,32 @@ class MultivariateGaussian(Distribution):
     def sample(self, n_samples=1):
         return np.random.multivariate_normal(self.mu, self.sigma, size=n_samples)
 
-    def log_pdf(self, x):
-        # log-pdf of a Gaussian RV
-        return (-0.5 * (x - self.mu) @ self.prec_mult(x - self.mu) -
-                0.5 * self.logdet - 0.5 * len(self.mu) * np.log(2 * np.pi))
+    def log_pdf(self, X):
+        """
+        log(p(x)) = -1/2 * (x - μ)^T * Σ^-1 * (x - μ) - 1/2 * log(det(Σ)) - d/2 * log(2π)
+        :param X:
+        :return:
+        """
+        if len(X.shape) == 1:
+            X = X.reshape(1, -1)
+        elif len(X.shape) != 2 or X.shape[1] != self.dim:
+            raise ValueError(f"Input X must have shape (n_samples, {self.dim}), got {X.shape}")
+
+        prec_term = -0.5 * (X - self.mu) @ self.prec @ (X - self.mu).T
+        det_term = - 0.5 * self.logdet
+        const_term = -0.5 * self.dim * np.log(2 * np.pi)
+        return prec_term + det_term + const_term
 
     def kl_divergence(self, other):
         d = self.dim
         delta_mu = self.mu - other.mu
         delta_mu = delta_mu.reshape(d, 1)
         delta_sigma = self.sigma - other.sigma
-        inv_sigma = np.linalg.inv(self.sigma)
         inv_other_sigma = np.linalg.inv(other.sigma)
         tr_term = np.trace(np.dot(inv_other_sigma, self.sigma))
         delta_mu_t = delta_mu.T
         return 0.5 * (np.log(np.linalg.det(other.sigma) / np.linalg.det(self.sigma)) - d +
-                      np.trace(np.dot(inv_other_sigma, self.sigma)) +
-                      np.dot(np.dot(delta_mu.T, inv_other_sigma), delta_mu) +
+                      tr_term + np.dot(np.dot(delta_mu_t, inv_other_sigma), delta_mu) +
                       np.trace(np.dot(np.dot(delta_sigma, inv_other_sigma), delta_sigma)))
 
     def plot(self, n_samples=1000, n_dim=2):
@@ -107,3 +122,6 @@ class MultivariateGaussian(Distribution):
         samples = self.sample(n_samples)
         plt.scatter(samples[:, 0], samples[:, 1])
         plt.show()
+
+    def __repr__(self):
+        return f"Multivariate Gaussian(mu={self.mu}, sigma={self.sigma})"
