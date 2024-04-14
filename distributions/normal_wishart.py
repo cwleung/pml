@@ -1,6 +1,6 @@
 import numpy as np
 
-from distributions.gaussian import MultivariateGaussian
+from distributions.multivariate import MultivariateGaussian
 from distributions.wishart import WishartDistribution
 
 

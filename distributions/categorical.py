@@ -1,5 +1,6 @@
-from distributions.base import Distribution
 import numpy as np
+
+from distributions.base import Distribution
 
 
 class Categorical(Distribution):
@@ -25,27 +26,26 @@ class Categorical(Distribution):
         return np.sum(self.p * np.log(self.p / other.p))
 
     def log_pdf(self, x: np.array):
+        x = x.astype(int)
         return np.log(self.p[x])
 
     @staticmethod
-    def mle(data: np.ndarray, alpha: float = 1.0):
+    def mle(data: np.ndarray, n_categories=None, alpha=1.0):
         """
         Maximum likelihood estimation of the Categorical distribution with Laplace smoothing.
+
+        :param n_categories: Number of classes
         :param data: Data samples (each row is a sample). (n_samples, n_features)
         :param alpha: Laplace smoothing parameter (default is 1.0)
-        :return: None (update the distribution)
+        :return: Categorical object with updated probabilities
         """
-        counts = np.bincount(data.squeeze(), minlength=len(np.unique(data)))
-        counts += alpha
-        p = counts / counts.sum()
-        return Categorical(p=p)
+        if data.ndim == 1:
+            likelihood = np.zeros(int(n_categories))
+            for k in range(int(n_categories)):
+                likelihood[k] = ((data == k).sum() + alpha) / (len(data) + alpha * n_categories)
+            return Categorical(p=likelihood)
+        else:
+            raise ValueError("Input data should be 1D array.")
 
-
-if __name__ == '__main__':
-    cat = Categorical(p=np.array([0.1, 0.2, 0.3, 0.4]))
-    cat.plot()
-    print(cat.sample(10))
-    print(cat.log_pdf([0, 1, 2, 3]))
-
-    # example of mle
-    Categorical.mle(data=np.array([[0], [0], [1], [1], [2], [2], [3], [3], [4]])).plot()
+    def __repr__(self):
+        return f"Categorical(p={self.p})"
