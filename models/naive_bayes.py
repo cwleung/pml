@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 
-from distributions.multivariate import MultivariateGaussian
+from distributions.categorical import Categorical
 from distributions.normal import Gaussian
 from models.base_model import SupBaseModel
 
@@ -39,109 +39,122 @@ class NaiveBayes(SupBaseModel):
         return text_data_vectorized.toarray(), labels
 
     def fit(self, X, y, alpha=1.0):
-        """
-        Fit the model given the data
-
-        :param X: Input data (n_samples, n_features)
-        :param y: Target data (n_samples,)
-        :param alpha: Laplace smoothing parameter (default: 1.0)
-        :return: None
-        """
         self.classes = np.unique(y)
         self.n_classes = len(self.classes)
         self.n_features = X.shape[1]
-
         self.priors = np.zeros(self.n_classes)
-        self.likelihoods = []
+        self.likelihoods = [{} for _ in range(self.n_features)]
 
-        for i, c in enumerate(self.classes):
+        n_categories = np.max(X, axis=0) + 1  # Determine number of categories for each feature
+        for idx, c in enumerate(self.classes):
             X_c = X[y == c]
-            self.priors[i] = len(X_c) / len(X)
-            # TODO need to find a way to check if the feature is categorical or continuous
-            # likelihood = MultivariateGaussian.mle(X_c, alpha=alpha)
-            likelihood = Gaussian.mle(X_c, alpha=alpha)
-            self.likelihoods.append(likelihood)
+            self.priors[idx] = len(X_c) / len(X)
+
+            for i in range(self.n_features):
+                if np.all(np.equal(np.mod(X[:, i], 1), 0)):  # Is feature categorical?
+                    self.likelihoods[i][c] = Categorical.mle(X_c[:, i], alpha=alpha, n_categories=n_categories[i])
+                else:
+                    self.likelihoods[i][c] = Gaussian.mle(X_c[:, i])
 
     def predict(self, X):
         """
-        Predict the class of each sample.
+        Predict the class labels for each sample in X.
 
-        :param X: Input data (n_samples, n_features)
-        :return: Predicted classes (n_samples,)
+        :param X: Input feature matrix (n_samples, n_features)
+        :return: Array of predicted class labels (n_samples,)
         """
         n_samples = X.shape[0]
         posteriors = np.zeros((n_samples, self.n_classes))
 
         for i, c in enumerate(self.classes):
-            prior_term = np.log(self.priors[i])
-            likelihood_term = self.likelihoods[i].log_pdf(X).sum(axis=1)
-            posteriors[:, i] = prior_term + likelihood_term
-        return self.classes[np.argmax(posteriors, axis=1)]
+            log_prior = np.log(self.priors[i])  # log of prior probabilities
+
+            log_likelihood = 0
+            for j in range(self.n_features):
+                feature_likelihoods = self.likelihoods[j][c]
+                log_likelihood += feature_likelihoods.log_pdf(X[:, j])
+
+            posteriors[:, i] = log_prior + log_likelihood
+
+        predicted_class_indices = np.argmax(posteriors, axis=1)
+        return self.classes[predicted_class_indices]
 
     def score(self, X, y):
         return np.mean(self.predict(X) == y)
 
-    def plot_decision_boundary(self, X, y, resolution=0.01):
-        """
-        Plots the decision boundary for a 2D dataset.
+        def plot_decision_boundary(self, X, y, resolution=0.01):
+            """
+            Plots the decision boundary for a 2D dataset.
 
-        Parameters:
-        X (numpy.ndarray): Input data (n_samples, n_features)
-        y (numpy.ndarray): Target labels (n_samples,)
-        features (list): The indices of the features to be used for the plot (default: [0, 1])
-        resolution (float): The resolution of the meshgrid for plotting (default: 0.01)
+            Parameters:
+            X (numpy.ndarray): Input data (n_samples, n_features)
+            y (numpy.ndarray): Target labels (n_samples,)
+            features (list): The indices of the features to be used for the plot (default: [0, 1])
+            resolution (float): The resolution of the meshgrid for plotting (default: 0.01)
 
-        Returns:
-        None
-        """
-        if X.shape[1] < 2:
-            raise ValueError("plot_decision_boundary only works for 2D datasets.")
-        if X.shape[1] > 2:
-            from sklearn.manifold import TSNE
-            X = TSNE(n_components=2).fit_transform(X)
-            print("Finished t-SNE..., shape: ", X.shape)
+            Returns:
+            None
+            """
+            if X.shape[1] < 2:
+                raise ValueError("plot_decision_boundary only works for 2D datasets.")
+            if X.shape[1] > 2:
+                from sklearn.manifold import TSNE
+                X = TSNE(n_components=2).fit_transform(X)
+                print("Finished t-SNE..., shape: ", X.shape)
 
-        markers = ('s', 'x', 'o', '^', 'v')
-        colors = ('red', 'blue', 'lightgreen', 'gray', 'cyan')
-        cmap = plt.cm.RdYlBu
+            markers = ('s', 'x', 'o', '^', 'v')
+            colors = ('red', 'blue', 'lightgreen', 'gray', 'cyan')
+            cmap = plt.cm.RdYlBu
 
-        x1_min, x1_max = X[:, 0].min() - 1, X[:, 0].max() + 1
-        x2_min, x2_max = X[:, 1].min() - 1, X[:, 1].max() + 1
-        xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
-                               np.arange(x2_min, x2_max, resolution))
+            x1_min, x1_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+            x2_min, x2_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+            xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
+                                   np.arange(x2_min, x2_max, resolution))
 
-        Z = self.predict(np.array([xx1.ravel(), xx2.ravel()]).T)
-        Z = Z.reshape(xx1.shape)
+            Z = self.predict(np.array([xx1.ravel(), xx2.ravel()]).T)
+            Z = Z.reshape(xx1.shape)
 
-        plt.contourf(xx1, xx2, Z, alpha=0.4, cmap=cmap)
-        plt.xlim(xx1.min(), xx1.max())
-        plt.ylim(xx2.min(), xx2.max())
+            plt.contourf(xx1, xx2, Z, alpha=0.4, cmap=cmap)
+            plt.xlim(xx1.min(), xx1.max())
+            plt.ylim(xx2.min(), xx2.max())
 
-        # Plot class samples
-        for idx, cl in enumerate(np.unique(y)):
-            plt.scatter(x=X[y == cl, 0], y=X[y == cl, 1],
-                        alpha=0.8, c=colors[idx],
-                        marker=markers[idx], label=cl, edgecolor='black')
+            # Plot class samples
+            for idx, cl in enumerate(np.unique(y)):
+                plt.scatter(x=X[y == cl, 0], y=X[y == cl, 1],
+                            alpha=0.8, c=colors[idx],
+                            marker=markers[idx], label=cl, edgecolor='black')
 
-        plt.xlabel('Feature 1')
-        plt.ylabel('Feature 2')
-        plt.legend(loc='upper left')
-        plt.show()
+            plt.xlabel('Feature 1')
+            plt.ylabel('Feature 2')
+            plt.legend(loc='upper left')
+            plt.show()
 
 
 if __name__ == '__main__':
     # X, y = NaiveBayes.load_and_vectorize_data("../data/spam.csv")
-    # Mock data X and y has cosine relationship
-    X = np.random.rand(100, 2)
-    y = np.where(np.dot(X, [1, 1]) > 1, 1, 0)
-
-    # Fit model
+    # categorical data
+    X = np.random.randint(0, 10, (1000, 2))
+    y = np.where(np.dot(X, [1, 1]) > 5, 1, 0)
     priors = [0.5, 0.5]
     model = NaiveBayes()
     model.fit(X, y)
-
-    # Evaluate model
     print(f"Accuracy: {model.score(X, y)}")
+    model.plot_decision_boundary(X, y)
 
-    # Plot priors and likelihoods
+    # do the continuous case
+    X = np.random.rand(100, 2)
+    y = np.where(np.dot(X, [1, 1]) > 1, 1, 0)
+    model = NaiveBayes()
+    model.fit(X, y)
+    print(f"Accuracy: {model.score(X, y)}")
+    model.plot_decision_boundary(X, y)
+
+    # do mixture of both
+    X = np.random.rand(100, 2)
+    y = np.where(np.dot(X, [1, 1]) > 1, 1, 0)
+    X = np.hstack((X, np.random.randint(0, 10, (100, 1))))
+    print(X.shape)
+    model = NaiveBayes()
+    model.fit(X, y)
+    print(f"Accuracy: {model.score(X, y)}")
     model.plot_decision_boundary(X, y)
