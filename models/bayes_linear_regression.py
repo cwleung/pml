@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.base import BaseEstimator, RegressorMixin
 
 
 def generate_sin_data_n_features(n_samples=100, n_features=2, noise=0.1):
@@ -14,16 +13,17 @@ def generate_sin_data_n_features(n_samples=100, n_features=2, noise=0.1):
     return X, y
 
 
-class BayesianLinearRegression(BaseEstimator, RegressorMixin):
+class BayesianLinearRegression:
     def __init__(self, alpha=1.0, beta=1.0):
         self.alpha = alpha
         self.beta = beta
         self.w_ = None
 
-    def fit(self, X, y):
+    def fit(self, X, y, nugget=1e-10):
         n_samples, n_features = X.shape
         prior_cov_matrix = self.alpha * np.eye(n_features)
         A = prior_cov_matrix + self.beta * X.T @ X
+        A += np.eye(n_features) * nugget
         b = self.beta * X.T @ y
         self.w_ = np.linalg.solve(A, b)
         return self
@@ -38,10 +38,16 @@ class BayesianLinearRegression(BaseEstimator, RegressorMixin):
         return y_pred
 
 
+import time
+
 if __name__ == '__main__':
-    X, y = generate_sin_data_n_features(n_samples=100, n_features=4, noise=0.1)
+    X, y = generate_sin_data_n_features(n_samples=100, n_features=10, noise=0.1)
     model = BayesianLinearRegression(alpha=1.0, beta=1.0)
+
+    start = time.time()
     model.fit(X, y)
+    print(f"Training time: {time.time() - start:.2f}s")
+
     y_pred, y_std = model.predict(X, return_std=True)
 
     plt.figure(figsize=(10, 5))
