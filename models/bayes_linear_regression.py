@@ -2,8 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 
-from distributions.multivariate import MultivariateGaussian
-
 
 def generate_sin_data_n_features(n_samples=100, n_features=2, noise=0.1):
     X = np.linspace(0, 10, n_samples)
@@ -22,11 +20,10 @@ class BayesianLinearRegression(BaseEstimator, RegressorMixin):
         self.beta = beta
         self.w_ = None
 
-        self.prior = MultivariateGaussian(np.zeros(1), np.eye(1))
-
     def fit(self, X, y):
         n_samples, n_features = X.shape
-        A = self.alpha * np.eye(n_features) + self.beta * X.T @ X
+        prior_cov_matrix = self.alpha * np.eye(n_features)
+        A = prior_cov_matrix + self.beta * X.T @ X
         b = self.beta * X.T @ y
         self.w_ = np.linalg.solve(A, b)
         return self
@@ -34,7 +31,8 @@ class BayesianLinearRegression(BaseEstimator, RegressorMixin):
     def predict(self, X, return_std=False):
         y_pred = X @ self.w_
         if return_std:
-            y_var = np.sum((X @ np.linalg.inv(self.alpha * np.eye(X.shape[1]) + self.beta * X.T @ X)) * X, axis=1)
+            cov_matrix = np.linalg.inv(self.alpha * np.eye(X.shape[1]) + self.beta * X.T @ X)
+            y_var = np.sum((X @ cov_matrix) * X, axis=1)
             y_std = np.sqrt(y_var)
             return y_pred, y_std
         return y_pred
