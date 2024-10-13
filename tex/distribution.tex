@@ -1,0 +1,59 @@
+\section{Distribution}
+
+\paragraph{Exponential Family}
+$p_{F}(x; \theta) = \exp(\langle t(x), \theta\rangle - F(\theta) + k(x))$ \\
+
+\paragraph{Conjugate Prior}
+$p(\theta | x) = p_{F}(\theta; \eta) = \exp(\langle t(\theta), \eta\rangle - F(\eta) + k(\theta))$ \\
+
+\paragraph{Posterior}
+$p(\theta | x) = p_{F}(\theta; \eta + t(x)) = \exp(\langle t(\theta), \eta + t(x)\rangle - F(\eta + t(x)) + k(\theta))$ \\
+
+
+\section{KL-Divergence}
+\begin{equation}
+    \text{KL}(p || q) = \int p(x) \log \frac{p(x)}{q(x)} dx = \mathbb{E}_p \left[ \log \frac{p(x)}{q(x)} \right]
+\end{equation}
+\subsections{Properties}
+\begin{enumerate}
+    \item $ \text{KL}(p || q) = \infty \iff \exists x \in \text{supp}(p) \text{ s.t. } q(x) = 0$
+\end{enumerate}
+
+
+\section{Gaussian Distribution}
+The following property showing that the actions of Gaussian distribution is also a Gaussian distribution.
+\begin{enumerate}
+    \item Additive Property
+    \begin{equation}
+        \mathcal{N}(\mu_1, \Sigma_1) + \mathcal{N}(\mu_2, \Sigma_2) = \mathcal{N}(\mu_1 + \mu_2, \Sigma_1 + \Sigma_2)
+    \end{equation}
+    \item Multiplicative Property
+    \begin{equation}
+        \mathcal{N}(\mu_1, \Sigma_1) \times \mathcal{N}(\mu_2, \Sigma_2) = \mathcal{N}(\mu_1 \mu_2, \mu_1^2 \Sigma_2 + \mu_2^2 \Sigma_1 + \Sigma_1 \Sigma_2)
+    \end{equation}
+    \item Linear Transformation
+    \begin{equation}
+        \mathcal{N}(\mu, \Sigma) = \mathcal{N}(\mathbf{A} \mathbf{x} + \mathbf{b}, \mathbf{A} \Sigma \mathbf{A}^T)
+
+    \end{equation}
+    \item Inverse
+    \begin{equation}
+        \mathcal{N}(\mu, \Sigma)^{-1} = \mathcal{N}(\Sigma^{-1} \mu, \Sigma^{-1})
+    \end{equation}
+    \item Determinant
+    \begin{equation}
+        |\mathcal{N}(\mu, \Sigma)| = \frac{1}{\sqrt{|\Sigma|}} \exp \left( - \frac{1}{2} \mu^T \Sigma^{-1} \mu \right)
+    \end{equation}
+    \item Trace
+    \begin{equation}
+        \text{tr}(\mathcal{N}(\mu, \Sigma)) = \mu^T \mu + \text{tr}(\Sigma)
+    \end{equation}
+    \item Marginalization
+    \begin{equation}
+        \mathcal{N}(\mu, \Sigma) = \mathcal{N}(\mu_1, \Sigma_{11}) \times \mathcal{N}(\mu_2, \Sigma_{22})
+    \end{equation}
+    \item Conditioning
+    \begin{equation}
+        \mathcal{N}(\mu, \Sigma) = \mathcal{N}(\mu_1, \Sigma_{11}) \times \mathcal{N}(\mu_2, \Sigma_{22})
+    \end{equation}
+\end{enumerate}

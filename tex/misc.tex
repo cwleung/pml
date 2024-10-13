@@ -1,0 +1,535 @@
+%! Author = derekleung
+%! Date = 27/03/2024
+
+% Preamble
+\documentclass[11pt]{article}
+
+% Packages
+\usepackage{amsmath}
+\usepackage{amsfonts}
+
+% Document
+\begin{document}
+    \section{Test 1}
+    \begin{align*}
+        KL(NIW_0 || NIW_1) &= \int NIW_0 \log \frac{NIW_0}{NIW_1} d\mu d\Sigma \\
+        &= \int NIW_0 (\log NIW_0 - \log NIW_1) d\mu d\Sigma \\
+        &= \mathbb{E}{NIW_0}[\log NIW_0] - \mathbb{E}{NIW_0}[\log NIW_1]
+    \end{align*}
+
+    The log of the NIW distribution can be written as:
+    \begin{align*}
+        \log NIW(\mu, \Sigma | \mu_0, \Lambda_0, \nu_0, \Psi_0) &= \log \mathcal{N}(\mu | \mu_0, (\kappa_0 \Sigma)^{-1}) + \log \mathcal{IW}(\Sigma | \Psi_0, \nu_0) \\
+        &= -\frac{d}{2} \log(2\pi) + \frac{1}{2} \log |\kappa_0 \Sigma| - \frac{\kappa_0}{2} (\mu - \mu_0)^T \Sigma^{-1} (\mu - \mu_0) \\
+        &\quad - \frac{\nu_0 + d + 1}{2} \log |\Sigma| - \frac{1}{2} \text{tr}(\Psi_0 \Sigma^{-1}) + \text{const.}
+    \end{align*}
+
+    Now, let's calculate the expected values:
+    \begin{align*}
+        \mathbb{E}{NIW_0}[\log NIW_0] &= -\frac{d}{2} \log(2\pi) + \frac{1}{2} \mathbb{E}{NIW_0}[\log |\kappa_0 \Sigma|] - \frac{\kappa_0}{2} \mathbb{E}{NIW_0}[(\mu - \mu_0)^T \Sigma^{-1} (\mu - \mu_0)] \\
+        &\quad - \frac{\nu_0 + d + 1}{2} \mathbb{E}{NIW_0}[\log |\Sigma|] - \frac{1}{2} \mathbb{E}_{NIW_0}[\text{tr}(\Psi_0 \Sigma^{-1})] + \text{const.} \\
+        \mathbb{E}{NIW_0}[\log NIW_1] &= -\frac{d}{2} \log(2\pi) + \frac{1}{2} \mathbb{E}{NIW_0}[\log |\kappa_1 \Sigma|] - \frac{\kappa_1}{2} \mathbb{E}{NIW_0}[(\mu - \mu_1)^T \Sigma^{-1} (\mu - \mu_1)] \\
+        &\quad - \frac{\nu_1 + d + 1}{2} \mathbb{E}{NIW_0}[\log |\Sigma|] - \frac{1}{2} \mathbb{E}_{NIW_0}[\text{tr}(\Psi_1 \Sigma^{-1})] + \text{const.}
+    \end{align*}
+
+    Using the properties of the NIW distribution, we can calculate the expected values:
+    \begin{align*}
+        \mathbb{E}{NIW_0}[\mu] &= \mu_0 \\
+        \mathbb{E}{NIW_0}[\Sigma] &= \frac{\Psi_0}{\nu_0 - d - 1} \\
+        \mathbb{E}{NIW_0}[(\mu - \mu_0)^T \Sigma^{-1} (\mu - \mu_0)] &= \frac{d}{\kappa_0} \\
+        \mathbb{E}{NIW_0}[\log |\Sigma|] &= -\log |\Psi_0| + \sum_{i=1}^d \psi\left(\frac{\nu_0 - i + 1}{2}\right) \\
+        \mathbb{E}_{NIW_0}[\text{tr}(\Psi_1 \Sigma^{-1})] &= (\nu_0 - d - 1) \text{tr}(\Psi_1 \Psi_0^{-1})
+    \end{align*}
+
+    Substituting these expected values into the KL-divergence expression and simplifying, we get:
+    \begin{align*}
+        KL(NIW_0 || NIW_1) &= \frac{1}{2} \left(\log \frac{|\Lambda_1|}{|\Lambda_0|} - d + \text{tr}(\Lambda_1^{-1} \Lambda_0) + \kappa_1 (\mu_1 - \mu_0)^T \Lambda_1 (\mu_1 - \mu_0)\right) \\
+        &\quad + \frac{\nu_1 - \nu_0}{2} \log |\Psi_0| - \frac{d(\nu_1 - \nu_0)}{2} \log(\nu_0 - d - 1) + \frac{\nu_0 - d - 1}{2} \text{tr}(\Psi_1 \Psi_0^{-1}) \\
+        &\quad - \frac{d}{2} (\nu_1 - \nu_0) - \frac{d(\nu_1 - \nu_0)}{2} \sum_{i=1}^d \psi\left(\frac{\nu_0 - i + 1}{2}\right)
+    \end{align*}
+    ```
+
+
+    \section{2}
+    Given:
+    - The data $\mathbf{x} = (x_1, \ldots, x_n)$ follows a Normal distribution with unknown mean $\mu$ and unknown variance $\sigma^2$.
+    - The prior distribution for $(\mu, \sigma^2)$ is a Normal-Inverse-Wishart distribution, denoted as $\text{NIW}(\mu_0, \lambda_0, \nu_0, \Psi_0)$.
+
+    Step 1: Specify the likelihood function for the data.
+    \begin{align*}
+        p(\mathbf{x} \mid \mu, \sigma^2) &= \prod_{i=1}^n p(x_i \mid \mu, \sigma^2) \\
+        &= \prod_{i=1}^n \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(x_i - \mu)^2}{2\sigma^2}\right) \\
+        &= (2\pi\sigma^2)^{-\frac{n}{2}} \exp\left(-\frac{1}{2\sigma^2} \sum_{i=1}^n (x_i - \mu)^2\right)
+    \end{align*}
+
+    Step 2: Specify the Normal-Inverse-Wishart prior distribution for $(\mu, \sigma^2)$.
+    \begin{align*}
+        p(\mu, \sigma^2) &= \text{NIW}(\mu, \sigma^2 \mid \mu_0, \lambda_0, \nu_0, \Psi_0) \\
+        &= \mathcal{N}(\mu \mid \mu_0, \sigma^2/\lambda_0) \cdot \text{InvWishart}(\sigma^2 \mid \nu_0, \Psi_0) \\
+        &\propto (\sigma^2)^{-\frac{1}{2}} \exp\left(-\frac{\lambda_0(\mu - \mu_0)^2}{2\sigma^2}\right) \cdot (\sigma^2)^{-\frac{\nu_0+2}{2}} \exp\left(-\frac{1}{2\sigma^2}\text{tr}(\Psi_0)\right)
+    \end{align*}
+
+    Step 3: Derive the posterior distribution for $(\mu, \sigma^2)$ using Bayes' theorem.
+    \begin{align*}
+        p(\mu, \sigma^2 \mid \mathbf{x}) &\propto p(\mathbf{x} \mid \mu, \sigma^2) \cdot p(\mu, \sigma^2) \\
+        &\propto \exp\left(-\frac{1}{2\sigma^2} \left(\sum_{i=1}^n (x_i - \mu)^2 + \lambda_0(\mu - \mu_0)^2 + \text{tr}(\Psi_0)\right)\right) \cdot (\sigma^2)^{-\frac{n+\nu_0+3}{2}} \\
+        &= \text{NIW}(\mu, \sigma^2 \mid \mu_n, \lambda_n, \nu_n, \Psi_n)
+    \end{align*}
+    where
+    \begin{align*}
+        \mu_n &= \frac{\lambda_0\mu_0 + n\bar{x}}{\lambda_0 + n} \\
+        \lambda_n &= \lambda_0 + n \\
+        \nu_n &= \nu_0 + n \\
+        \Psi_n &= \Psi_0 + \sum_{i=1}^n (x_i - \bar{x})^2 + \frac{\lambda_0n}{\lambda_0+n}(\bar{x} - \mu_0)^2
+    \end{align*}
+    and $\bar{x} = \frac{1}{n}\sum_{i=1}^n x_i$ is the sample mean.
+
+    Step 4: Derive the predictive distribution for a new data point $x_{n+1}$.
+    \begin{align*}
+        p(x_{n+1} \mid \mathbf{x}) &= \int\int p(x_{n+1} \mid \mu, \sigma^2) \cdot p(\mu, \sigma^2 \mid \mathbf{x}) \, d\mu \, d\sigma^2 \\
+        &= \text{Student-t}(x_{n+1} \mid \mu_n, \frac{\Psi_n(\lambda_n+1)}{\lambda_n(\nu_n-1)}, \nu_n-1)
+    \end{align*}
+
+    The predictive distribution follows a Student-t distribution with location parameter $\mu_n$, scale parameter $\frac{\Psi_n(\lambda_n+1)}{\lambda_n(\nu_n-1)}$, and $\nu_n-1$ degrees of freedom.
+
+
+    \section{3}
+    The NIW prior on the Normal distribution parameters is given by:
+    $$
+    p(\mu, \lambda) = \text{NIW}(\mu, \lambda | \mu_0, \kappa_0, \nu_0, \Psi_0)
+    $$
+
+    We approximate the true posterior $p(\mu, \lambda | \mathbf{X})$ with a variational distribution $q(\mu, \lambda)$, also assumed to be NIW:
+    $$
+    q(\mu, \lambda) = \text{NIW}(\mu, \lambda | \mu_q, \kappa_q, \nu_q, \Psi_q)
+    $$
+
+    The ELBO is defined as:
+    $$
+    \text{ELBO}(q) = \mathbb{E}_{q(\mu, \lambda)}[\log p(\mathbf{X}, \mu, \lambda) - \log q(\mu, \lambda)]
+    $$
+
+    Now, let's derive the ELBO step by step:
+
+    1. Expand the joint log-likelihood:
+    $$
+    \begin{aligned}
+        \log p(\mathbf{X}, \mu, \lambda) &= \log p(\mathbf{X} | \mu, \lambda) + \log p(\mu, \lambda) \\
+        &= \sum_{i=1}^N \log \mathcal{N}(x_i | \mu, \lambda^{-1}) + \log \text{NIW}(\mu, \lambda | \mu_0, \kappa_0, \nu_0, \Psi_0)
+    \end{aligned}
+    $$
+
+    2. Take the expectation of the joint log-likelihood under $q(\mu, \lambda)$:
+    $$
+    \begin{aligned}
+        \mathbb{E}_{q(\mu, \lambda)}[\log p(\mathbf{X}, \mu, \lambda)] &= \sum_{i=1}^N \mathbb{E}_{q(\mu, \lambda)}[\log \mathcal{N}(x_i | \mu, \lambda^{-1})] \\
+        &\quad + \mathbb{E}_{q(\mu, \lambda)}[\log \text{NIW}(\mu, \lambda | \mu_0, \kappa_0, \nu_0, \Psi_0)]
+    \end{aligned}
+    $$
+
+    3. Compute the expectation of the log-likelihood term:
+    $$
+    \begin{aligned}
+        \mathbb{E}_{q(\mu, \lambda)}[\log \mathcal{N}(x_i | \mu, \lambda^{-1})] &= -\frac{1}{2} \log(2\pi) + \frac{1}{2} \mathbb{E}_{q(\lambda)}[\log \lambda] \\
+        &\quad - \frac{1}{2} \mathbb{E}_{q(\mu, \lambda)}[(x_i - \mu)^2 \lambda]
+    \end{aligned}
+    $$
+
+    4. Compute the expectation of the log-prior term:
+    $$
+    \begin{aligned}
+        \mathbb{E}_{q(\mu, \lambda)}[\log \text{NIW}(\mu, \lambda | \mu_0, \kappa_0, \nu_0, \Psi_0)] &= \text{const} + \frac{\nu_0}{2} \log |\Psi_0| - \frac{\nu_q}{2} \log |\Psi_q| \\
+        &\quad + \frac{1}{2} \log \frac{\kappa_0}{\kappa_q} + \frac{\nu_0 - \nu_q}{2} \mathbb{E}_{q(\lambda)}[\log \lambda] \\
+        &\quad - \frac{\kappa_0 \nu_q}{2\kappa_q} \mathbb{E}_{q(\lambda)}[(\mu - \mu_0)^T \Psi_0 (\mu - \mu_0)]
+    \end{aligned}
+    $$
+
+    5. Compute the entropy of the variational distribution:
+    $$
+    \begin{aligned}
+        -\mathbb{E}_{q(\mu, \lambda)}[\log q(\mu, \lambda)] &= \text{const} + \frac{\nu_q}{2} \log |\Psi_q| - \frac{1}{2} \log \kappa_q \\
+        &\quad - \frac{\nu_q - 1}{2} \mathbb{E}_{q(\lambda)}[\log \lambda]
+    \end{aligned}
+    $$
+
+    6. Combine the terms to obtain the ELBO:
+    $$
+    \begin{aligned}
+        \text{ELBO}(q) &= \sum_{i=1}^N \left(-\frac{1}{2} \log(2\pi) + \frac{1}{2} \mathbb{E}_{q(\lambda)}[\log \lambda] - \frac{1}{2} \mathbb{E}_{q(\mu, \lambda)}[(x_i - \mu)^2 \lambda]\right) \\
+        &\quad + \frac{\nu_0}{2} \log |\Psi_0| - \frac{\nu_q}{2} \log |\Psi_q| + \frac{1}{2} \log \frac{\kappa_0}{\kappa_q} + \frac{\nu_0 - \nu_q}{2} \mathbb{E}_{q(\lambda)}[\log \lambda] \\
+        &\quad - \frac{\kappa_0 \nu_q}{2\kappa_q} \mathbb{E}_{q(\lambda)}[(\mu - \mu_0)^T \Psi_0 (\mu - \mu_0)] \\
+        &\quad + \frac{\nu_q}{2} \log |\Psi_q| - \frac{1}{2} \log \kappa_q - \frac{\nu_q - 1}{2} \mathbb{E}_{q(\lambda)}[\log \lambda] + \text{const}
+    \end{aligned}
+    $$
+
+
+    \section{4}
+    Certainly! Let's derive the Evidence Lower Bound (ELBO) for a Hidden Markov Model (HMM) step by step. We'll use the following notation:
+
+    - $x_{1:T}$ represents the observed sequence of length $T$
+    - $z_{1:T}$ represents the corresponding hidden state sequence
+    - $\theta$ represents the model parameters (initial state probabilities, transition probabilities, and emission probabilities)
+    - $q(z_{1:T})$ represents the variational distribution over the hidden state sequence
+
+    Step 1: Start with the log-likelihood of the observed data.
+    \begin{align*}
+        \log p(x_{1:T}; \theta) &= \log \sum_{z_{1:T}} p(x_{1:T}, z_{1:T}; \theta) \\
+        &= \log \sum_{z_{1:T}} p(x_{1:T} | z_{1:T}; \theta) p(z_{1:T}; \theta)
+    \end{align*}
+
+    Step 2: Introduce the variational distribution $q(z_{1:T})$ and apply Jensen's inequality.
+    \begin{align*}
+        \log p(x_{1:T}; \theta) &= \log \sum_{z_{1:T}} q(z_{1:T}) \frac{p(x_{1:T}, z_{1:T}; \theta)}{q(z_{1:T})} \\
+        &\geq \sum_{z_{1:T}} q(z_{1:T}) \log \frac{p(x_{1:T}, z_{1:T}; \theta)}{q(z_{1:T})}
+    \end{align*}
+
+    Step 3: Expand the joint probability $p(x_{1:T}, z_{1:T}; \theta)$ using the HMM factorization.
+    \begin{align*}
+        \log p(x_{1:T}; \theta) &\geq \sum_{z_{1:T}} q(z_{1:T}) \log \frac{p(z_1; \theta) \prod_{t=2}^T p(z_t | z_{t-1}; \theta) \prod_{t=1}^T p(x_t | z_t; \theta)}{q(z_{1:T})} \\
+        &= \sum_{z_{1:T}} q(z_{1:T}) \left[ \log p(z_1; \theta) + \sum_{t=2}^T \log p(z_t | z_{t-1}; \theta) + \sum_{t=1}^T \log p(x_t | z_t; \theta) - \log q(z_{1:T}) \right]
+    \end{align*}
+
+    Step 4: Rearrange the terms and simplify the expression.
+    \begin{align*}
+        \log p(x_{1:T}; \theta) &\geq \sum_{z_{1:T}} q(z_{1:T}) \left[ \log p(z_1; \theta) + \sum_{t=2}^T \log p(z_t | z_{t-1}; \theta) + \sum_{t=1}^T \log p(x_t | z_t; \theta) \right] \\
+        &\quad - \sum_{z_{1:T}} q(z_{1:T}) \log q(z_{1:T}) \\
+        &= \mathbb{E}_{q(z_{1:T})} \left[ \log p(z_1; \theta) + \sum_{t=2}^T \log p(z_t | z_{t-1}; \theta) + \sum_{t=1}^T \log p(x_t | z_t; \theta) \right] \\
+        &\quad + H(q(z_{1:T}))
+    \end{align*}
+
+    The derived expression is the Evidence Lower Bound (ELBO) for the Hidden Markov Model. It consists of two terms:
+    1. The expected log-likelihood of the complete data (observed and hidden states) under the variational distribution $q(z_{1:T})$.
+    2. The entropy of the variational distribution $H(q(z_{1:T}))$.
+
+    Maximizing the ELBO with respect to the variational distribution $q(z_{1:T})$ and the model parameters $\theta$ leads to a tight lower bound on the log-likelihood of the observed data $\log p(x_{1:T}; \theta)$.
+
+
+    \section{5}
+
+    Given:
+    - Observed variables: $\mathbf{x} = (x_1, \ldots, x_T)$
+    - Latent variables: $\mathbf{z} = (z_1, \ldots, z_T)$
+    - Variational distribution: $q(\mathbf{z})$
+    - Joint distribution: $p(\mathbf{x}, \mathbf{z})$
+
+    Step 1: Start with the log-likelihood of the observed data.
+    \begin{align*}
+        \log p(\mathbf{x}) &= \log \int p(\mathbf{x}, \mathbf{z}) d\mathbf{z}
+    \end{align*}
+
+    Step 2: Introduce the variational distribution $q(\mathbf{z})$ and multiply by $\frac{q(\mathbf{z})}{q(\mathbf{z})}$.
+    \begin{align*}
+        \log p(\mathbf{x}) &= \log \int p(\mathbf{x}, \mathbf{z}) \frac{q(\mathbf{z})}{q(\mathbf{z})} d\mathbf{z} \\
+        &= \log \mathbb{E}_{q(\mathbf{z})} \left[ \frac{p(\mathbf{x}, \mathbf{z})}{q(\mathbf{z})} \right]
+    \end{align*}
+
+    Step 3: Apply Jensen's inequality to move the log inside the expectation.
+    \begin{align*}
+        \log p(\mathbf{x}) &\geq \mathbb{E}_{q(\mathbf{z})} \left[ \log \frac{p(\mathbf{x}, \mathbf{z})}{q(\mathbf{z})} \right] \\
+        &= \mathbb{E}_{q(\mathbf{z})} [\log p(\mathbf{x}, \mathbf{z})] - \mathbb{E}_{q(\mathbf{z})} [\log q(\mathbf{z})]
+    \end{align*}
+
+    Step 4: Expand the joint distribution $p(\mathbf{x}, \mathbf{z})$ using the HMM factorization.
+    \begin{align*}
+        p(\mathbf{x}, \mathbf{z}) &= p(z_1) \prod_{t=2}^T p(z_t | z_{t-1}) \prod_{t=1}^T p(x_t | z_t)
+    \end{align*}
+
+    Step 5: Substitute the expanded joint distribution into the ELBO.
+    \begin{align*}
+        \text{ELBO} &= \mathbb{E}_{q(\mathbf{z})} \left[ \log p(z_1) + \sum_{t=2}^T \log p(z_t | z_{t-1}) + \sum_{t=1}^T \log p(x_t | z_t) \right] - \mathbb{E}_{q(\mathbf{z})} [\log q(\mathbf{z})]
+    \end{align*}
+
+    Step 6: Simplify the ELBO by expanding the expectations and using the factorization of the variational distribution $q(\mathbf{z}) = \prod_{t=1}^T q(z_t)$.
+    \begin{align*}
+        \text{ELBO} &= \mathbb{E}_{q(z_1)} [\log p(z_1)] + \sum_{t=2}^T \mathbb{E}_{q(z_t, z_{t-1})} [\log p(z_t | z_{t-1})] \\
+        &\quad + \sum_{t=1}^T \mathbb{E}_{q(z_t)} [\log p(x_t | z_t)] - \sum_{t=1}^T \mathbb{E}_{q(z_t)} [\log q(z_t)]
+    \end{align*}
+
+    The derived ELBO for the Hidden Markov Model consists of four terms:
+    1. The expected log-probability of the initial latent state under the variational distribution.
+    2. The sum of expected log-transition probabilities under the variational distribution.
+    3. The sum of expected log-emission probabilities under the variational distribution.
+    4. The negative entropy of the variational distribution.
+
+    This ELBO serves as a lower bound on the log-likelihood of the observed data and can be used as an objective function for variational inference in Hidden Markov Models.
+    To make the ELBO suitable for Automatic Differentiation Variational Inference (ADVI), we need to express the variational distribution $q(\mathbf{z})$ in a way that allows for efficient computation of gradients with respect to its parameters.
+
+    A common choice for the variational distribution in ADVI is to use a mean-field approximation, where the latent variables are assumed to be independent and governed by a factorized distribution:
+
+    $$q(\mathbf{z}) = \prod_{t=1}^T q(z_t)$$
+
+    For the HMM, a reasonable choice for the variational distribution over the latent states is a Gaussian distribution with a diagonal covariance matrix:
+
+    $$q(z_t) = \mathcal{N}(z_t \mid \mu_t, \sigma_t^2)$$
+
+    Here, $\mu_t$ and $\sigma_t^2$ are the variational parameters for the mean and variance of the Gaussian distribution at time $t$.
+
+    With this choice of variational distribution, the ELBO can be written as:
+
+    \begin{align*}
+        \mathcal{L}(\theta, \mu, \sigma^2) &= \mathbb{E}_{q(\mathbf{z})} \left[ \sum_{t=1}^T \log p(x_t \mid z_t, \theta) + \sum_{t=2}^T \log p(z_t \mid z_{t-1}, \theta) + \log p(z_1 \mid \theta) - \log q(z_t) \right] \\
+        &= \sum_{t=1}^T \mathbb{E}_{q(z_t)} \left[ \log p(x_t \mid z_t, \theta) \right] + \sum_{t=2}^T \mathbb{E}_{q(z_t, z_{t-1})} \left[ \log p(z_t \mid z_{t-1}, \theta) \right] \\
+        &\quad+ \mathbb{E}_{q(z_1)} \left[ \log p(z_1 \mid \theta) \right] - \sum_{t=1}^T \mathbb{E}_{q(z_t)} \left[ \log q(z_t) \right]
+    \end{align*}
+
+    Here, we have made the variational parameters $\mu$ and $\sigma^2$ explicit in the ELBO notation.
+
+    The key advantage of this formulation is that the expectations over the Gaussian variational distributions can be computed analytically or approximated using efficient numerical techniques. Additionally, the gradients of the ELBO with respect to the variational parameters $\mu$ and $\sigma^2$ can be computed using automatic differentiation, enabling efficient optimization of the ELBO using stochastic gradient-based methods.
+
+    Note that the specific form of the ELBO and the variational distribution may need to be adjusted based on the assumptions and structure of the HMM (e.g., if the emission or transition distributions are non-Gaussian).
+
+
+    \section{6}
+    Given:
+    - Observations: $\mathbf{x} = (x_1, \ldots, x_T)$
+    - Hidden states: $\mathbf{z} = (z_1, \ldots, z_T)$
+    - Initial state probabilities: $\pi_i = p(z_1 = i)$
+    - Transition probabilities: $a_{ij} = p(z_t = j | z_{t-1} = i)$
+    - Emission probabilities: $b_i(x_t) = p(x_t | z_t = i)$
+    - Variational approximation: $q(\mathbf{z})$
+
+    Step 1: Write the joint probability distribution of the HMM.
+    \begin{align}
+        p(\mathbf{x}, \mathbf{z}) &= p(z_1) \prod_{t=2}^T p(z_t | z_{t-1}) \prod_{t=1}^T p(x_t | z_t) \\
+        &= \pi_{z_1} \prod_{t=2}^T a_{z_{t-1}, z_t} \prod_{t=1}^T b_{z_t}(x_t)
+    \end{align}
+
+    Step 2: Define the ELBO as the lower bound of the log-evidence.
+    \begin{align}
+        \log p(\mathbf{x}) &\geq \mathbb{E}_{q(\mathbf{z})}[\log p(\mathbf{x}, \mathbf{z}) - \log q(\mathbf{z})] \\
+        &= \text{ELBO}(q)
+    \end{align}
+
+    Step 3: Expand the ELBO using the joint probability distribution and the variational approximation.
+    \begin{align}
+        \text{ELBO}(q) &= \mathbb{E}_{q(\mathbf{z})}[\log p(\mathbf{x}, \mathbf{z}) - \log q(\mathbf{z})] \\
+        &= \mathbb{E}_{q(\mathbf{z})}[\log \pi_{z_1} + \sum_{t=2}^T \log a_{z_{t-1}, z_t} + \sum_{t=1}^T \log b_{z_t}(x_t) - \log q(\mathbf{z})]
+    \end{align}
+
+    Step 4: Assume a mean-field variational approximation for $q(\mathbf{z})$.
+    \begin{align}
+        q(\mathbf{z}) &= \prod_{t=1}^T q(z_t) \\
+        \log q(\mathbf{z}) &= \sum_{t=1}^T \log q(z_t)
+    \end{align}
+
+    Step 5: Substitute the mean-field approximation into the ELBO.
+    \begin{align}
+        \text{ELBO}(q) &= \mathbb{E}_{q(\mathbf{z})}[\log \pi_{z_1}] + \sum_{t=2}^T \mathbb{E}_{q(z_{t-1}, z_t)}[\log a_{z_{t-1}, z_t}] \\
+        &\quad + \sum_{t=1}^T \mathbb{E}_{q(z_t)}[\log b_{z_t}(x_t)] - \sum_{t=1}^T \mathbb{E}_{q(z_t)}[\log q(z_t)]
+    \end{align}
+
+
+    \section{KL Divergence between Gaussian-inverse-Wishart Distributions}
+    Let's denote the two Gaussian-inverse-Wishart distributions as:
+
+    $$p(\mu, \Sigma) = \text{NIW}(\mu \mid m_p, \beta_p, W_p, \nu_p)$$
+    $$q(\mu, \Sigma) = \text{NIW}(\mu \mid m_q, \beta_q, W_q, \nu_q)$$
+
+    where:
+    \begin{itemize}
+        \item NIW represents the Gaussian-inverse-Wishart distribution
+        \item $\mu$ is the mean vector
+        \item $\Sigma$ is the precision matrix (inverse of the covariance matrix)
+        \item $m$ is the mean vector parameter
+        \item $\beta$ is the precision parameter (inverse of the covariance matrix)
+        \item $W$ is the scale matrix parameter
+        \item $\nu$ is the degrees of freedom parameter
+    \end{itemize}
+
+
+    The probability density function (PDF) of the Gaussian-inverse-Wishart distribution is given by:
+
+    $$p(\mu, \Sigma) = \frac{1}{C(\nu_p, W_p)} |\Sigma|^{(\nu_p+d+1)/2} \exp\left(-\frac{1}{2} \text{tr}(\Sigma W_p)\right) \exp\left(-\frac{1}{2} \beta_p (\mu-m_p)^T \Sigma (\mu-m_p)\right)$$
+
+    where:
+    - $d$ is the dimensionality of the data
+    - $C(\nu_p, W_p)$ is the normalization constant
+
+    The normalization constant $C(\nu_p, W_p)$ is given by:
+
+    $$C(\nu_p, W_p) = |W_p|^{-\nu_p/2} \left(2^{\nu_p d/2} \pi^{d(d-1)/4} \Gamma_d(\nu_p/2)\right)^{-1}$$
+
+    where:
+    - $\Gamma_d(\cdot)$ is the multivariate gamma function
+
+    Now, we can compute the KL divergence between $p(\mu, \Sigma)$ and $q(\mu, \Sigma)$ as:
+
+    $$\text{KL}(p||q) = \int p(\mu, \Sigma) \log\left(\frac{p(\mu, \Sigma)}{q(\mu, \Sigma)}\right) d\mu d\Sigma$$
+
+    Substituting the PDFs and simplifying, we get:
+
+    \begin{align*}
+        \text{KL}(p||q) &= \log\left(\frac{C(\nu_q, W_q)}{C(\nu_p, W_p)}\right) + \frac{\nu_p}{2}\left(\text{tr}(W_p^{-1} W_q) - \log|W_p^{-1} W_q| - d\right) \\
+        &\quad + \frac{\nu_p}{2}(m_p - m_q)^T (\beta_q + W_q^{-1}) (m_p - m_q) \\
+        &\quad + \log \Gamma_d(\nu_q/2) - \log \Gamma_d(\nu_p/2) \\
+        &\quad - \frac{\nu_p - \nu_q}{2} \psi\left(\frac{\nu_p + 1 - d}{2}\right) + \frac{\nu_p - \nu_q}{2} \psi\left(\frac{\nu_q + 1 - d}{2}\right)
+    \end{align*}
+
+    where $\psi(\cdot)$ is the digamma function.
+
+    Simplifying the first term, we get:
+
+    $$\log\left(\frac{C(\nu_q, W_q)}{C(\nu_p, W_p)}\right) = \frac{\nu_p - \nu_q}{2} \log|W_q/W_p| - \frac{\nu_p - \nu_q}{2}d$$
+
+    Substituting this back into the KL divergence expression, we obtain:
+
+    \begin{align*}
+        \text{KL}(p||q) &= \frac{\nu_p - \nu_q}{2} \log|W_q/W_p| - \frac{\nu_p - \nu_q}{2}d + \frac{\nu_p}{2}\left(\text{tr}(W_p^{-1} W_q) - d\right) \\
+        &\quad + \frac{\nu_p}{2}(m_p - m_q)^T (\beta_q + W_q^{-1}) (m_p - m_q) \\
+        &\quad + \log \Gamma_d(\nu_q/2) - \log \Gamma_d(\nu_p/2) \\
+        &\quad - \frac{\nu_p - \nu_q}{2} \psi\left(\frac{\nu_p + 1 - d}{2}\right) + \frac{\nu_p - \nu_q}{2} \psi\left(\frac{\nu_q + 1 - d}{2}\right)
+    \end{align*}
+
+    This expression provides a closed-form solution for the KL divergence between two Gaussian-inverse-Wishart distributions, which is useful in various applications, such as Bayesian inference, model selection, and variational inference.
+
+
+    \section[]{Bayesian Inference for Normal Distribution with Unknown Mean and Variance}
+    Sure, here's the step-by-step mathematical derivation with reformatted formulas to avoid overflow:
+
+    Let's start with the prior distribution:
+
+    $$p(\mu, \tau) = \text{NIW}(\mu, \tau \mid m_0, \beta_0, W_0, \nu_0)$$
+
+    The probability density function (PDF) of the Gaussian-inverse-Wishart distribution is given by:
+
+    $$p(\mu, \tau) \propto \tau^{\nu_0/2} \exp\left(-\frac{1}{2} \beta_0 (\mu - m_0)^2 \tau\right) \exp\left(-\frac{1}{2} \nu_0 W_0 \tau^{-1}\right)$$
+
+    The likelihood function for the normal distribution with unknown mean $\mu$ and precision $\tau$ is:
+
+    $$p(\mathbf{x} \mid \mu, \tau) = \left(\frac{\tau}{2\pi}\right)^{n/2} \exp\left(-\frac{\tau}{2} \sum_{i=1}^n (x_i - \mu)^2\right)$$
+
+    Using Bayes' theorem, we can compute the posterior distribution as:
+
+    \begin{align*}
+        p(\mu, \tau \mid \mathbf{x}) &\propto p(\mathbf{x} \mid \mu, \tau) \, p(\mu, \tau) \\
+        &\propto \left(\frac{\tau}{2\pi}\right)^{n/2} \exp\left(-\frac{\tau}{2} \sum_{i=1}^n (x_i - \mu)^2\right) \\
+        &\quad\quad \times \tau^{\nu_0/2} \exp\left(-\frac{1}{2} \beta_0 (\mu - m_0)^2 \tau\right) \exp\left(-\frac{1}{2} \nu_0 W_0 \tau^{-1}\right)
+    \end{align*}
+
+    To simplify the expression, let's define:
+
+    $$S = \sum_{i=1}^n (x_i - \bar{x})^2 = \sum_{i=1}^n (x_i - \mu)^2 + n (\bar{x} - \mu)^2$$
+
+    where $\bar{x}$ is the sample mean.
+
+    Substituting this into the posterior distribution, we get:
+
+    \begin{align*}
+        p(\mu, \tau \mid \mathbf{x}) &\propto \tau^{n/2} \exp\left(-\frac{\tau}{2} \left(S + n (\bar{x} - \mu)^2\right)\right) \\
+        &\quad\quad \times \tau^{\nu_0/2} \exp\left(-\frac{1}{2} \beta_0 (\mu - m_0)^2 \tau\right) \exp\left(-\frac{1}{2} \nu_0 W_0 \tau^{-1}\right) \\
+        &\propto \tau^{(\nu_0 + n)/2} \exp\left(-\frac{\tau}{2} \left(S + n (\bar{x} - \mu)^2 + \beta_0 (\mu - m_0)^2\right)\right) \\
+        &\quad\quad \times \exp\left(-\frac{1}{2} \nu_0 W_0 \tau^{-1}\right)
+    \end{align*}
+
+    Completing the square for $\mu$, we have:
+
+    $$S + n (\bar{x} - \mu)^2 + \beta_0 (\mu - m_0)^2 = S + \frac{\beta_0 n}{n + \beta_0} (\bar{x} - m_0)^2 + \frac{n \beta_0}{n + \beta_0} (\mu - m_n)^2$$
+
+    where $m_n = \frac{\beta_0 m_0 + n \bar{x}}{n + \beta_0}$ is the posterior mean.
+
+    Substituting this back into the posterior distribution, we get:
+
+    \begin{align*}
+        p(\mu, \tau \mid \mathbf{x}) &\propto \tau^{(\nu_0 + n)/2} \exp\left(-\frac{\tau}{2} \left(S + \frac{\beta_0 n}{n + \beta_0} (\bar{x} - m_0)^2 + \frac{n \beta_0}{n + \beta_0} (\mu - m_n)^2\right)\right) \\
+        &\quad\quad \times \exp\left(-\frac{1}{2} \nu_0 W_0 \tau^{-1}\right)
+    \end{align*}
+
+    Comparing this expression with the Gaussian-inverse-Wishart PDF, we can identify the following posterior parameters:
+
+    \begin{align*}
+        m_n &= \frac{\beta_0 m_0 + n \bar{x}}{\beta_0 + n} \\
+        \beta_n &= \beta_0 + n \\
+        W_n &= W_0 + S + \frac{\beta_0 n}{n + \beta_0} (\bar{x} - m_0)^2 \\
+        \nu_n &= \nu_0 + n
+    \end{align*}
+
+    Therefore, the posterior distribution is:
+
+    $$p(\mu, \tau \mid \mathbf{x}) = \text{NIW}(\mu, \tau \mid m_n, \beta_n, W_n, \nu_n)$$
+
+    This derivation shows that the posterior distribution for the normal distribution with unknown mean and variance, using the Gaussian-inverse-Wishart prior, is also a Gaussian-inverse-Wishart distribution with updated parameters that depend on the prior parameters and the observed data.
+
+
+    \section{Bayesian Inference for Multivariate Gaussian Distribution with Unknown Mean and Variance}
+
+    To fix the LaTeX equation overflow, we can adjust the formatting and spacing of the equations. Here's the corrected version:
+
+    Define the model: Let $\mathbf{x} = (x_1, x_2, \ldots, x_N)$ be a set of $N$ observed data points, where each $x_i \in \mathbb{R}^D$ is a $D$-dimensional vector. We assume that the data points are drawn from a multivariate Gaussian distribution with unknown mean $\boldsymbol{\mu}$ and unknown covariance matrix $\boldsymbol{\Sigma}$:
+
+    $$
+    p(\mathbf{x} \mid \boldsymbol{\mu}, \boldsymbol{\Sigma}) = \prod_{i=1}^N \mathcal{N}(x_i \mid \boldsymbol{\mu}, \boldsymbol{\Sigma})
+    $$
+
+    Introduce variational distributions: We introduce variational distributions $q(\boldsymbol{\mu})$ and $q(\boldsymbol{\Sigma})$ to approximate the intractable posteriors $p(\boldsymbol{\mu} \mid \mathbf{x})$ and $p(\boldsymbol{\Sigma} \mid \mathbf{x})$, respectively. A common choice for ADVI is to use a Gaussian distribution for $q(\boldsymbol{\mu})$ and an inverse Wishart distribution for $q(\boldsymbol{\Sigma})$:
+
+    \begin{align*}
+        q(\boldsymbol{\mu}) &= \mathcal{N}(\boldsymbol{\mu} \mid \boldsymbol{m}, \boldsymbol{S}) \\
+        q(\boldsymbol{\Sigma}) &= \mathcal{IW}(\boldsymbol{\Sigma} \mid \boldsymbol{W}, \nu)
+    \end{align*}
+
+    Here, $\boldsymbol{m}$ and $\boldsymbol{S}$ are the variational parameters for the mean and covariance of $q(\boldsymbol{\mu})$, and $\boldsymbol{W}$ and $\nu$ are the variational parameters for the scale matrix and degrees of freedom of $q(\boldsymbol{\Sigma})$.
+
+    Derive the ELBO: The ELBO is given by:
+
+    \begin{align*}
+        \mathcal{L}(\boldsymbol{m}, \boldsymbol{S}, \boldsymbol{W}, \nu) &= \mathbb{E}_{q(\boldsymbol{\mu}, \boldsymbol{\Sigma})} \left[ \log \frac{p(\mathbf{x}, \boldsymbol{\mu}, \boldsymbol{\Sigma})}{q(\boldsymbol{\mu}, \boldsymbol{\Sigma})} \right] \\
+        &= \mathbb{E}_{q(\boldsymbol{\mu}, \boldsymbol{\Sigma})} \bigg[ \log p(\mathbf{x} \mid \boldsymbol{\mu}, \boldsymbol{\Sigma}) + \log p(\boldsymbol{\mu}) + \log p(\boldsymbol{\Sigma}) \\
+        &\quad - \log q(\boldsymbol{\mu}) - \log q(\boldsymbol{\Sigma}) \bigg]
+    \end{align*}
+
+    Assuming a flat prior on $\boldsymbol{\mu}$ and an inverse Wishart prior on $\boldsymbol{\Sigma}$ with hyperparameters $\boldsymbol{W}_0$ and $\nu_0$, we can expand the ELBO as:
+
+    \begin{align*}
+        \mathcal{L}(\boldsymbol{m}, \boldsymbol{S}, \boldsymbol{W}, \nu) &= \mathbb{E}_{q(\boldsymbol{\mu})} \left[ \sum_{i=1}^N \log \mathcal{N}(x_i \mid \boldsymbol{\mu}, \mathbb{E}_{q(\boldsymbol{\Sigma})}[\boldsymbol{\Sigma}]) \right] \\
+        &\quad + \mathbb{E}_{q(\boldsymbol{\Sigma})} \bigg[ \log \mathcal{IW}(\boldsymbol{\Sigma} \mid \boldsymbol{W}_0, \nu_0) - \frac{N}{2} \log |\boldsymbol{\Sigma}| \\
+        &\qquad - \frac{1}{2} \sum_{i=1}^N (\mathbb{E}_{q(\boldsymbol{\mu})}[\boldsymbol{\mu} - x_i])^T \boldsymbol{\Sigma}^{-1} (\mathbb{E}_{q(\boldsymbol{\mu})}[\boldsymbol{\mu} - x_i]) \bigg] \\
+        &\quad - \mathbb{E}_{q(\boldsymbol{\mu})} \left[ \log \mathcal{N}(\boldsymbol{\mu} \mid \boldsymbol{m}, \boldsymbol{S}) \right] - \mathbb{E}_{q(\boldsymbol{\Sigma})} \left[ \log \mathcal{IW}(\boldsymbol{\Sigma} \mid \boldsymbol{W}, \nu) \right]
+    \end{align*}
+
+    This ELBO is suitable for ADVI because:
+
+    - The expectations over $q(\boldsymbol{\mu})$ and $q(\boldsymbol{\Sigma})$ can be computed analytically or approximated numerically.
+    - The gradients of the ELBO with respect to the variational parameters $\boldsymbol{m}$, $\boldsymbol{S}$, $\boldsymbol{W}$, and $\nu$ can be computed using automatic differentiation.
+
+    The ELBO can be optimized using stochastic gradient-based methods to find the optimal variational parameters that approximate the true posteriors $p(\boldsymbol{\mu} \mid \mathbf{x})$ and $p(\boldsymbol{\Sigma} \mid \mathbf{x})$.
+
+    Note that the specific form of the ELBO and the variational distributions may need to be adjusted based on the assumptions and prior distributions used for $\boldsymbol{\mu}$ and $\boldsymbol{\Sigma}$.
+
+    Here's the ELBO without the `math` wrapper:
+
+    \begin{align*}
+        \mathcal{L}(\boldsymbol{m}, \boldsymbol{S}, \boldsymbol{W}, \nu) &= \mathbb{E}_{q(\boldsymbol{\mu}, \boldsymbol{\Sigma})} \left[ \log \frac{p(\mathbf{x}, \boldsymbol{\mu}, \boldsymbol{\Sigma})}{q(\boldsymbol{\mu}, \boldsymbol{\Sigma})} \right] \\
+        &= \mathbb{E}_{q(\boldsymbol{\mu}, \boldsymbol{\Sigma})} \left[ \log p(\mathbf{x} \mid \boldsymbol{\mu}, \boldsymbol{\Sigma}) \right] \\
+        &\quad + \mathbb{E}_{q(\boldsymbol{\mu}, \boldsymbol{\Sigma})} \left[ \log \frac{p(\boldsymbol{\mu}, \boldsymbol{\Sigma})}{q(\boldsymbol{\mu}, \boldsymbol{\Sigma})} \right] \\
+        &= \mathbb{E}_{q(\boldsymbol{\mu}, \boldsymbol{\Sigma})} \left[ \log p(\mathbf{x} \mid \boldsymbol{\mu}, \boldsymbol{\Sigma}) \right] \\
+        &\quad - \text{KL}(q(\boldsymbol{\mu}, \boldsymbol{\Sigma}) \| p(\boldsymbol{\mu}, \boldsymbol{\Sigma}))
+    \end{align*}
+
+    Here's the KL divergence between two distributions \( p \) and \( q \):
+
+    $$\text{KL}(q \| p) = \mathbb{E}_{q} \left[ \log \frac{q}{p} \right]$$
+
+    Now, we can further expand the ELBO using the model and variational distributions:
+
+    \begin{align*}
+        \mathcal{L}(\boldsymbol{m}, \boldsymbol{S}, \boldsymbol{W}, \nu) &= \mathbb{E}_{q(\boldsymbol{\mu})} \left[ \sum_{i=1}^N \log \mathcal{N}(x_i \mid \boldsymbol{\mu}, \mathbb{E}_{q(\boldsymbol{\Sigma})}[\boldsymbol{\Sigma}]) \right] \\
+        &\quad - \text{KL}(q(\boldsymbol{\mu}) \| p(\boldsymbol{\mu})) - \text{KL}(q(\boldsymbol{\Sigma}) \| p(\boldsymbol{\Sigma}))
+    \end{align*}
+
+    Assuming a flat prior on \( \boldsymbol{\mu} \) and an inverse Wishart prior on \( \boldsymbol{\Sigma} \) with hyperparameters \( \boldsymbol{W}_0 \) and \( \nu_0 \), we can write the KL divergence terms as:
+
+    \begin{align*}
+        \text{KL}(q(\boldsymbol{\mu}) \| p(\boldsymbol{\mu})) &= \mathbb{E}_{q(\boldsymbol{\mu})} \left[ \log \mathcal{N}(\boldsymbol{\mu} \mid \boldsymbol{m}, \boldsymbol{S}) \right] \\
+        \text{KL}(q(\boldsymbol{\Sigma}) \| p(\boldsymbol{\Sigma})) &= \mathbb{E}_{q(\boldsymbol{\Sigma})} \bigg[ \log \mathcal{IW}(\boldsymbol{\Sigma} \mid \boldsymbol{W}, \nu) - \log \mathcal{IW}(\boldsymbol{\Sigma} \mid \boldsymbol{W}_0, \nu_0) \\
+        &\qquad\qquad\qquad + \frac{N}{2} \log |\boldsymbol{\Sigma}| + \frac{1}{2} \sum_{i=1}^N (\mathbb{E}_{q(\boldsymbol{\mu})}[\boldsymbol{\mu} - x_i])^T \boldsymbol{\Sigma}^{-1} (\mathbb{E}_{q(\boldsymbol{\mu})}[\boldsymbol{\mu} - x_i]) \bigg]
+    \end{align*}
+
+    Substituting these KL divergence terms into the ELBO, we get:
+
+    \begin{align*}
+        \mathcal{L}(\boldsymbol{m}, \boldsymbol{S}, \boldsymbol{W}, \nu) &= \mathbb{E}_{q(\boldsymbol{\mu})} \left[ \sum_{i=1}^N \log \mathcal{N}(x_i \mid \boldsymbol{\mu}, \mathbb{E}_{q(\boldsymbol{\Sigma})}[\boldsymbol{\Sigma}]) \right] \\
+        &\quad - \mathbb{E}_{q(\boldsymbol{\mu})} \left[ \log \mathcal{N}(\boldsymbol{\mu} \mid \boldsymbol{m}, \boldsymbol{S}) \right] \\
+        &\quad - \mathbb{E}_{q(\boldsymbol{\Sigma})} \bigg[ \log \mathcal{IW}(\boldsymbol{\Sigma} \mid \boldsymbol{W}, \nu) - \log \mathcal{IW}(\boldsymbol{\Sigma} \mid \boldsymbol{W}_0, \nu_0) \\
+        &\qquad\qquad\qquad + \frac{N}{2} \log |\boldsymbol{\Sigma}| + \frac{1}{2} \sum_{i=1}^N (\mathbb{E}_{q(\boldsymbol{\mu})}[\boldsymbol{\mu} - x_i])^T \boldsymbol{\Sigma}^{-1} (\mathbb{E}_{q(\boldsymbol{\mu})}[\boldsymbol{\mu} - x_i]) \bigg]
+    \end{align*}
+\end{document}

@@ -1,0 +1,35 @@
+%! Author = derekleung
+%! Date = 03/04/2024
+
+% Preamble
+\documentclass[11pt]{article}
+
+% Packages
+\usepackage{amsmath}
+
+% Document
+\begin{document}
+
+    \section{Entropy}
+    Entropy measures the uncertainty involved in predicting the value of a random variable. The entropy \(H\) of a discrete random variable \(X\) with probability mass function \(P(x)\) is defined as:
+    \begin{equation}
+        H(X) = -\sum_{i} P(x_i) \log_2 P(x_i)
+    \end{equation}
+    where the sum is over all possible values \(x_i\) of the random variable \(X\).
+
+
+    \section{Perplexity}
+    Perplexity is a measure of how well a probability distribution or probability model predicts a sample. It is defined as the exponentiation of the entropy:
+    \begin{equation}
+        PP(X) = 2^{H(X)}
+    \end{equation}
+    Alternatively, using the natural logarithm, perplexity can be expressed as:
+    \begin{equation}
+        PP(X) = e^{H(X)}
+    \end{equation}
+
+
+    \section{Conclusion}
+    A lower perplexity score indicates a better predictive model, as it means the model is less surprised by the test data. Entropy and perplexity are closely related and are valuable metrics in the evaluation of language models.
+
+\end{document}

@@ -1,0 +1,99 @@
+%! Author = derekleung
+%! Date = 01/04/2024
+
+% Preamble
+\documentclass[11pt]{article}
+
+% Packages
+\usepackage{amsmath}
+
+% Document
+\begin{document}
+    Sure, let's derive the log-likelihood for Naive Bayes with a binomial prior distribution for the class labels.
+
+    We start with the Naive Bayes assumption:
+
+    $$P(x_1, x_2, \ldots, x_n | y) = P(x_1 | y) \times P(x_2 | y) \times \ldots \times P(x_n | y)$$
+
+    Using Bayes' theorem, the posterior probability of the class given the features is:
+
+    $$P(y | x_1, x_2, \ldots, x_n) = \frac{P(x_1, x_2, \ldots, x_n | y) \times P(y)}{P(x_1, x_2, \ldots, x_n)}$$
+
+    Substituting the Naive Bayes assumption and introducing the binomial prior for the class labels, we get:
+
+    $$P(y | x_1, x_2, \ldots, x_n) = \frac{P(x_1 | y) \times P(x_2 | y) \times \ldots \times P(x_n | y) \times \binom{1}{y} \pi^y (1-\pi)^{1-y}}{P(x_1, x_2, \ldots, x_n)}$$
+
+    where $\pi$ is the prior probability of the positive class (y=1), and (1-$\pi$) is the prior probability of the negative class (y=0).
+
+    For a dataset with $N$ instances, the log-likelihood is the sum of the log probabilities of each instance belonging to its respective class:
+
+    $$\text{log-likelihood} = \sum_{i=1}^{N} \log P(y_i | x_{i1}, x_{i2}, \ldots, x_{in})$$
+
+    Substituting the Naive Bayes posterior probability with the binomial prior, we get:
+
+    $$\text{log-likelihood} = \sum_{i=1}^{N} \log \left( \frac{P(x_{i1} | y_i) \times P(x_{i2} | y_i) \times \ldots \times P(x_{in} | y_i) \times \binom{1}{y_i} \pi^{y_i} (1-\pi)^{1-y_i}}{P(x_{i1}, x_{i2}, \ldots, x_{in})} \right)$$
+
+    Since the denominator $P(x_{i1}, x_{i2}, \ldots, x_{in})$ is constant for all classes, we can ignore it for the purpose of maximizing the log-likelihood. Additionally, the binomial coefficient $\binom{1}{y_i}$ is also a constant for binary classification. Therefore, the log-likelihood can be simplified to:
+
+    $$\begin{align*}
+          \text{log-likelihood} &= \sum_{i=1}^{N} \left( \log P(x_{i1} | y_i) + \log P(x_{i2} | y_i) + \ldots + \log P(x_{in} | y_i) + y_i \log \pi + (1-y_i) \log (1-\pi) \right) \\
+          &= \sum_{i=1}^{N} \sum_{j=1}^{n} \log P(x_{ij} | y_i) + \sum_{i=1}^{N} \left( y_i \log \pi + (1-y_i) \log (1-\pi) \right)
+    \end{align*}$$
+
+    In this expression, the first term represents the sum of the log-likelihoods of the features given the class labels, and the second term represents the contribution of the binomial prior for the class labels.
+
+    To estimate the parameters of the Naive Bayes model (feature likelihoods $P(x_j | y)$ and the class prior $\pi$), we can maximize this log-likelihood function over the training data.
+    Sure, let's derive the log-likelihood for Naive Bayes with a beta prior distribution for the class labels.
+
+    We start with the Naive Bayes assumption:
+
+    $$P(x_1, x_2, \ldots, x_n | y) = P(x_1 | y) \times P(x_2 | y) \times \ldots \times P(x_n | y)$$
+
+    Using Bayes' theorem, the posterior probability of the class given the features is:
+
+    $$P(y | x_1, x_2, \ldots, x_n) = \frac{P(x_1, x_2, \ldots, x_n | y) \times P(y)}{P(x_1, x_2, \ldots, x_n)}$$
+
+    Substituting the Naive Bayes assumption and introducing the beta prior for the class labels, we get:
+
+    $$P(y | x_1, x_2, \ldots, x_n) = \frac{P(x_1 | y) \times P(x_2 | y) \times \ldots \times P(x_n | y) \times \frac{\Gamma(\alpha + \beta)}{\Gamma(\alpha) \Gamma(\beta)} \pi^{\alpha-1} (1-\pi)^{\beta-1}}{P(x_1, x_2, \ldots, x_n)}$$
+
+    where $\pi$ is the prior probability of the positive class (y=1), (1-$\pi$) is the prior probability of the negative class (y=0), and $\alpha$ and $\beta$ are the shape parameters of the beta distribution.
+
+    For a dataset with $N$ instances, the log-likelihood is the sum of the log probabilities of each instance belonging to its respective class:
+
+    $$\text{log-likelihood} = \sum_{i=1}^{N} \log P(y_i | x_{i1}, x_{i2}, \ldots, x_{in})$$
+
+    Substituting the Naive Bayes posterior probability with the beta prior, we get:
+
+    $$\text{log-likelihood} = \sum_{i=1}^{N} \log \left( \frac{P(x_{i1} | y_i) \times P(x_{i2} | y_i) \times \ldots \times P(x_{in} | y_i) \times \frac{\Gamma(\alpha + \beta)}{\Gamma(\alpha) \Gamma(\beta)} \pi^{\alpha-1} (1-\pi)^{\beta-1}}{P(x_{i1}, x_{i2}, \ldots, x_{in})} \right)$$
+
+    Since the denominator $P(x_{i1}, x_{i2}, \ldots, x_{in})$ and the term $\frac{\Gamma(\alpha + \beta)}{\Gamma(\alpha) \Gamma(\beta)}$ are constant for all classes, we can ignore them for the purpose of maximizing the log-likelihood. Therefore, the log-likelihood can be simplified to:
+
+    $$\begin{align*}
+          \text{log-likelihood} &= \sum_{i=1}^{N} \left( \log P(x_{i1} | y_i) + \log P(x_{i2} | y_i) + \ldots + \log P(x_{in} | y_i) + (\alpha-1) \log \pi + (\beta-1) \log (1-\pi) \right) \\
+          &= \sum_{i=1}^{N} \sum_{j=1}^{n} \log P(x_{ij} | y_i) + (\alpha-1) \sum_{i=1}^{N} y_i \log \pi + (\beta-1) \sum_{i=1}^{N} (1-y_i) \log (1-\pi)
+    \end{align*}$$
+
+    In this expression, the first term represents the sum of the log-likelihoods of the features given the class labels, and the second and third terms represent the contribution of the beta prior for the class labels.
+
+    To estimate the parameters of the Naive Bayes model (feature likelihoods $P(x_j | y)$ and the class prior $\pi$), we can maximize this log-likelihood function over the training data.
+
+    The beta prior allows us to incorporate prior knowledge or belief about the class distributions through the shape parameters $\alpha$ and $\beta$. When $\alpha = \beta = 1$, the beta distribution reduces to a uniform distribution, representing no prior knowledge. When $\alpha > 1$ and $\beta > 1$, the beta distribution is unimodal, with the mode at $\frac{\alpha-1}{\alpha+\beta-2}$, reflecting a prior belief about the class probability. The larger the values of $\alpha$ and $\beta$, the more concentrated the distribution is around the mode, representing a stronger prior belief.
+
+    By using the beta prior in the log-likelihood derivation, we can effectively incorporate prior knowledge or regularize the class probability estimates, especially in cases with limited or imbalanced training data.
+    \begin{align*}
+        P(x_1, x_2, \ldots, x_n | y) &= P(x_1 | y) \times P(x_2 | y) \times \ldots \times P(x_n | y) \\
+        P(y | x_1, x_2, \ldots, x_n) &= \frac{P(x_1, x_2, \ldots, x_n | y) \times P(y)}{P(x_1, x_2, \ldots, x_n)} \\
+        &= \frac{P(x_1 | y) \times P(x_2 | y) \times \ldots \times P(x_n | y) \times P(y)}{P(x_1, x_2, \ldots, x_n)} \\
+        \text{log-likelihood} &= \sum_{i=1}^{N} \log P(y_i | x_{i1}, x_{i2}, \ldots, x_{in}) \\
+        &= \sum_{i=1}^{N} \log \left( \frac{P(x_{i1} | y_i) \times P(x_{i2} | y_i) \times \ldots \times P(x_{in} | y_i) \times P(y_i)}{P(x_{i1}, x_{i2}, \ldots, x_{in})} \right) \\
+        &\approx \sum_{i=1}^{N} \left( \log P(x_{i1} | y_i) + \log P(x_{i2} | y_i) + \ldots + \log P(x_{in} | y_i) + \log P(y_i) \right)
+    \end{align*}
+
+    Where:
+    - $x_1, x_2, \ldots, x_n$ are the feature values
+    - $y$ is the class label
+    - $N$ is the number of instances in the dataset
+
+
+\end{document}

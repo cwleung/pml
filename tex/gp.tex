@@ -1,0 +1,98 @@
+\section{Probabilistic Parametric Regression}
+\subsection[]{Prior}
+\begin{equation}
+    \mathbf{y} = \mathbf{X} \mathbf{w} + \mathbf{\epsilon}
+\end{equation}
+\begin{equation}
+    \mathbf{w} \sim \mathcal{N}(\mathbf{0}, \sigma^2 \mathbf{I})
+\end{equation}
+\begin{equation}
+    \mathbf{\epsilon} \sim \mathcal{N}(\mathbf{0}, \sigma^2 \mathbf{I})
+\end{equation}
+\begin{equation}
+    \mathbf{y} \sim \mathcal{N}(\mathbf{0}, \mathbf{X} \mathbf{X}^T + \sigma^2 \mathbf{I})
+\end{equation}
+
+\subsection[]{Likelihood}
+\begin{equation}
+    p(\mathbf{y} | \mathbf{X}, \mathbf{w}, \sigma^2) = \mathcal{N}(\mathbf{y} | \mathbf{X} \mathbf{w}, \sigma^2 \mathbf{I})
+\end{equation}
+
+\subsection[]{Posterior on w}
+\begin{equation}
+    p(\mathbf{w} | \mathbf{X}, \mathbf{y}, \sigma^2) = \mathcal{N}(\mathbf{w} | \mathbf{m}, \mathbf{S})
+\end{equation}
+\begin{equation}
+    \mathbf{m} = \sigma^{-2} \mathbf{S} \mathbf{X} \mathbf{y}
+\end{equation}
+\begin{equation}
+    \mathbf{S} = (\sigma^{-2} \mathbf{X} \mathbf{X}^T + \mathbf{I})^{-1}
+\end{equation}
+
+\subsection[]{Posterior on f}
+\begin{equation}
+    p(\mathbf{f} | \mathbf{X}, \mathbf{y}, \sigma^2) = \mathcal{N}(\mathbf{f} | \mathbf{X} \mathbf{m}, \mathbf{X} \mathbf{S} \mathbf{X}^T + \sigma^2 \mathbf{I})
+\end{equation}
+
+\subsection[]{Predictive Distribution}
+\begin{equation}
+    p(\mathbf{y}_* | \mathbf{X}_*, \mathbf{X}, \mathbf{y}, \sigma^2) = \mathcal{N}(\mathbf{y}_* | \mathbf{X}_* \mathbf{m}, \mathbf{X}_* \mathbf{S} \mathbf{X}_*^T + \sigma^2 \mathbf{I})
+\end{equation}
+
+
+\subsection[]{Marginal Likelihood}
+\begin{equation}
+    p(\mathbf{y} | \mathbf{X}, \sigma^2) = \mathcal{N}(\mathbf{y} | \mathbf{0}, \mathbf{X} \mathbf{X}^T + \sigma^2 \mathbf{I})
+\end{equation}
+\begin{equation}
+    \log p(\mathbf{y} | \mathbf{X}, \sigma^2) = - \frac{1}{2} \mathbf{y}^T (\mathbf{X} \mathbf{X}^T + \sigma^2 \mathbf{I})^{-1} \mathbf{y} - \frac{1}{2} \log |\mathbf{X} \mathbf{X}^T + \sigma^2 \mathbf{I}| - \frac{n}{2} \log 2 \pi
+\end{equation}
+
+
+\section{Gaussian Regression}
+
+\subsection{Definition}
+\begin{align}
+    \mathbf{y} &= \mathbf{f} + \mathbf{\epsilon} \\
+    \mathbf{f} &\sim \mathcal{GP}(\mathbf{0}, \mathbf{K}) \\
+    \mathbf{\epsilon} &\sim \mathcal{N}(\mathbf{0}, \sigma^2 \mathbf{I})
+\end{align}
+
+
+\section{Gaussian Process}
+
+\subsection{Kernels}
+\begin{enumerate}
+    \item Squared Exponential Kernel
+    \begin{equation}
+        k(x, x') = \sigma_f^2 \exp \left( - \frac{(x - x')^2}{2 l^2} \right)
+    \end{equation}
+    \item Rational Quadratic Kernel
+    \begin{equation}
+        k(x, x') = \sigma_f^2 \left( 1 + \frac{(x - x')^2}{2 \alpha l^2} \right)^{-\alpha}
+    \end{equation}
+    \item Periodic Kernel
+    \begin{equation}
+        k(x, x') = \sigma_f^2 \exp \left( - \frac{2 \sin^2 \left( \frac{\pi (x - x')}{p} \right)}{l^2} \right)
+    \end{equation}
+    \item Linear Kernel
+    \begin{equation}
+        k(x, x') = \sigma_f^2 (x - c) (x' - c)
+    \end{equation}
+    \item Polynomial Kernel
+    \begin{equation}
+        k(x, x') = \sigma_f^2 (x - c) (x' - c) + \sigma_0^2
+    \end{equation}
+    \item Exponential Kernel
+    \begin{equation}
+        k(x, x') = \sigma_f^2 \exp \left( - \frac{|x - x'|}{l} \right)
+    \end{equation}
+    \item Matern Kernel
+    \begin{equation}
+        k(x, x') = \sigma_f^2 \frac{2^{1 - \nu}}{\Gamma(\nu)} \left( \frac{\sqrt{2 \nu} |x - x'|}{l} \right)^{\nu} K_{\nu} \left( \frac{\sqrt{2 \nu} |x - x'|}{l} \right)
+    \end{equation}
+    \item Neural Network Kernel
+    \begin{equation}
+        k(x, x') = \sigma_f^2 \frac{2}{\pi} \arcsin \left( \frac{2 x^T P x'}{\sqrt{(1 + 2 x^T P x) (1 + 2 x'^T P x')}} \right)
+    \end{equation}
+\end{enumerate}
