@@ -8,38 +8,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
-
-class GaussianProcess:
-    def __init__(self, kernel, noise=1e-8):
-        self.kernel = kernel
-        self.noise = noise
-        self.X_train = None
-        self.y_train = None
-        self.K = None
-        self.L = None
-        self.alpha = None
-
-    def fit(self, X, y):
-        self.X_train = X
-        self.y_train = y
-        if y.ndim == 1:
-            self.y_train = y.reshape(-1, 1)
-        self.K = self.kernel(self.X_train, self.X_train)
-        self.L = np.linalg.cholesky(self.K + self.noise * np.eye(len(self.X_train)))
-        self.alpha = np.linalg.solve(self.L.T, np.linalg.solve(self.L, self.y_train))
-
-    def predict(self, X):
-        Ks = self.kernel(self.X_train, X)
-        Kss = self.kernel(X, X)
-
-        mu = Ks.T.dot(self.alpha).reshape(-1)
-        v = np.linalg.solve(self.L, Ks)
-        var = np.diag(Kss - v.T.dot(v))
-
-        return mu, var
+from kernel.kernel import SquaredExponentialKernel
+from models.gp import GaussianProcess
 
 
-def expected_improvement(X, X_sample, Y_sample, gpr, xi=0.01):
+def expected_improvement(X, X_sample, gpr, xi=0.01):
     mu, sigma = gpr.predict(X)
     mu_sample = gpr.predict(X_sample)[0]
 
@@ -54,11 +27,6 @@ def expected_improvement(X, X_sample, Y_sample, gpr, xi=0.01):
         ei[sigma == 0.0] = 0.0
 
     return -ei.ravel()  # Ensure output is 1D
-
-
-def squared_exponential_kernel(X1, X2, l=1.0, sigma_f=1.0):
-    sqdist = np.sum(X1 ** 2, 1).reshape(-1, 1) + np.sum(X2 ** 2, 1) - 2 * np.dot(X1, X2.T)
-    return sigma_f ** 2 * np.exp(-0.5 / l ** 2 * sqdist)
 
 
 def objective_function(X):
@@ -76,6 +44,7 @@ def objective_function(X):
 
 
 def bayesian_optimization(f, bounds, n_iter, initial_points=5):
+
     dim = len(bounds)
     X_sample = np.random.uniform(bounds[:, 0], bounds[:, 1], size=(initial_points, dim))
     Y_sample = f(X_sample)
@@ -83,7 +52,8 @@ def bayesian_optimization(f, bounds, n_iter, initial_points=5):
     if Y_sample.ndim == 1:
         Y_sample = Y_sample.reshape(-1, 1)
 
-    gpr = GaussianProcess(squared_exponential_kernel)
+    rbf_kernel = SquaredExponentialKernel()
+    gpr = GaussianProcess(rbf_kernel)
 
     X_history = [X_sample]
     Y_history = [Y_sample]
@@ -92,7 +62,7 @@ def bayesian_optimization(f, bounds, n_iter, initial_points=5):
         gpr.fit(X_sample, Y_sample)
 
         result = minimize(
-            lambda X: expected_improvement(X.reshape(1, -1), X_sample, Y_sample, gpr),
+            lambda X: expected_improvement(X.reshape(1, -1), X_sample, gpr),
             x0=np.random.uniform(bounds[:, 0], bounds[:, 1], size=(1, dim)),
             bounds=bounds,
             method='L-BFGS-B'
