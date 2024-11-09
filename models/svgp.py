@@ -10,72 +10,94 @@ class SVGP(SupBaseModel):
     def __init__(self, kernel: Kernel, num_inducing_points: int = 10):
         self.kernel = kernel
         self.num_inducing_points = num_inducing_points
-        self.Z = None  # Inducing points
-        self.m = None  # Variational mean
-        self.S = None  # Variational covariance
+        self.Z = None
+        self.m = None
+        self.L = None
+        self.noise_var = None  # Added observation noise variance
 
     def initialize_variational_parameters(self, X):
-        # Initialize inducing points
-        idx = np.random.choice(X.shape[0], self.num_inducing_points, replace=False)
-        self.Z = torch.tensor(X[idx], requires_grad=True, dtype=torch.float32)
+        # Initialize inducing points using k-means or uniform spacing
+        if X.shape[0] > self.num_inducing_points:
+            idx = np.linspace(0, X.shape[0] - 1, self.num_inducing_points, dtype=int)
+            self.Z = torch.tensor(X[idx], requires_grad=True, dtype=torch.float32)
+        else:
+            self.Z = torch.tensor(X, requires_grad=True, dtype=torch.float32)
 
         # Initialize variational parameters
         self.m = Variable(torch.zeros((self.num_inducing_points, 1)), requires_grad=True)
-        L = torch.eye(self.num_inducing_points, requires_grad=True)
-        self.L = Variable(L)
+        L = torch.eye(self.num_inducing_points) * 0.1  # Smaller initial variance
+        self.L = Variable(L, requires_grad=True)
+        self.noise_var = Variable(torch.tensor([0.1]), requires_grad=True)  # Initial noise variance
 
     def elbo(self, X, y):
         X = torch.tensor(X, dtype=torch.float32)
         y = torch.tensor(y, dtype=torch.float32).reshape(-1, 1)
 
         # Compute kernel matrices
-        Kzz = self.kernel.matrix(self.Z)
+        Kzz = self.kernel.matrix(self.Z) + torch.eye(self.num_inducing_points) * 1e-6  # Add jitter for stability
         Kzx = self.kernel(self.Z, X)
+        Kxx_diag = self.kernel.diag(X)
 
         # Compute terms for ELBO
-        Kzz_inv = torch.inverse(Kzz)
-        S = self.L @ self.L.t()
-        trace_term = torch.trace(Kzz_inv @ S)
-        quad_term = self.m.t() @ Kzz_inv @ self.m
+        L = torch.tril(self.L)  # Ensure L is lower triangular
+        S = L @ L.t()
 
-        # Compute predictive mean and variance
-        mu = Kzx.t() @ Kzz_inv @ self.m
-        var = torch.diag(self.kernel.matrix(X)) - torch.sum(Kzx.t() @ Kzz_inv @ Kzx, dim=1)
+        # Stable computation of inverse using Cholesky
+        L_Kzz = torch.linalg.cholesky(Kzz)
+        alpha = torch.cholesky_solve(Kzx, L_Kzz)  # This computes Kzz^{-1} Kzx
 
-        # Compute log-likelihood
-        log_lik = -0.5 * torch.sum((y - mu) ** 2 / var.reshape(-1, 1)) - 0.5 * torch.sum(torch.log(var))
+        # Predictive distribution
+        mu = (alpha.t() @ self.m).squeeze()
+        var = Kxx_diag - torch.sum(Kzx * alpha, dim=0) + torch.sum((alpha.t() @ S) * alpha.t(), dim=1)
+        var = var + self.noise_var
 
-        # Compute KL divergence
-        kl_div = 0.5 * (trace_term + quad_term - self.num_inducing_points + torch.logdet(Kzz) - torch.logdet(S))
+        # Log likelihood term
+        log_lik = -0.5 * torch.sum((y.squeeze() - mu) ** 2 / var) \
+                  - 0.5 * torch.sum(torch.log(var)) \
+                  - 0.5 * y.shape[0] * np.log(2 * np.pi)
+
+        # KL divergence term
+        Kzz_inv = torch.cholesky_solve(torch.eye(self.num_inducing_points), L_Kzz)
+        kl_div = 0.5 * (
+                torch.trace(Kzz_inv @ S) +
+                (self.m.t() @ Kzz_inv @ self.m) -
+                self.num_inducing_points +
+                torch.logdet(Kzz) -
+                torch.logdet(S + torch.eye(self.num_inducing_points) * 1e-6)
+        )
 
         return log_lik - kl_div
 
-    def fit(self, X, y, learning_rate=0.003, num_iterations=1000):
+    def fit(self, X, y, learning_rate=0.01, num_iterations=2000):
         self.initialize_variational_parameters(X)
-        optimizer = torch.optim.Adam([self.Z, self.m, self.L], lr=learning_rate)
+        optimizer = torch.optim.Adam([self.Z, self.m, self.L, self.noise_var], lr=learning_rate)
 
-        for _ in range(num_iterations):
+        for i in range(num_iterations):
             optimizer.zero_grad()
-            loss = -self.elbo(X, y)  # Negative ELBO because we want to maximize it
+            loss = -self.elbo(X, y)
             loss.backward()
             optimizer.step()
 
-    def predict(self, X):
-        """
-        mu = K_{zx}^T K_{zz}^{-1} m
-        var = K_{xx} - K_{zx}^T K_{zz}^{-1} K_{zx} + K_{zx}^T K_{zz}^{-1} S K_{zz}^{-1} K_{zx}
-        """
-        X = torch.tensor(X, dtype=torch.float32)
-        Kzz = self.kernel.matrix(self.Z)
-        Kzx = self.kernel(self.Z, X)
+            # Ensure positive noise variance
+            with torch.no_grad():
+                self.noise_var.data.clamp_(min=1e-6)
 
-        Kzz_inv = torch.inverse(Kzz)
-        mu = Kzx.t() @ Kzz_inv @ self.m
-        S = self.L @ self.L.t()
-        var = torch.diag(self.kernel.matrix(X)) - torch.sum(Kzx.t() @ Kzz_inv @ Kzx, dim=1) + torch.diag(
-            Kzx.t() @ Kzz_inv @ S @ Kzz_inv @ Kzx)
+    def predict(self, X_test):
+        X_test = torch.tensor(X_test, dtype=torch.float32)
+        Kzz = self.kernel.matrix(self.Z) + torch.eye(self.num_inducing_points) * 1e-6
+        Kzx = self.kernel(self.Z, X_test)
+        Kxx = self.kernel.diag(X_test)
 
-        return mu.detach().numpy().flatten(), var.detach().numpy()
+        L_Kzz = torch.linalg.cholesky(Kzz)
+        alpha = torch.cholesky_solve(Kzx, L_Kzz)
+
+        mu = (alpha.t() @ self.m).squeeze()
+        L = torch.tril(self.L)
+        S = L @ L.t()
+        var = Kxx - torch.sum(Kzx * alpha, dim=0) + torch.sum((alpha.t() @ S) * alpha.t(), dim=1)
+        var = var + self.noise_var
+
+        return mu.detach().numpy(), var.detach().numpy()
 
 
 if __name__ == '__main__':
