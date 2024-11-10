@@ -1,15 +1,17 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import Normalize
+from scipy.stats import norm
 
 from data.dataset import generate_data
 
 
 class GaussianProcessClassifier:
-    def __init__(self, kernel, optimizer='L-BFGS-B', n_restarts=0):
+    def __init__(self, kernel, optimizer='L-BFGS-B', n_restarts=0, jitter=1e-8):
         self.kernel = kernel
         self.optimizer = optimizer
         self.n_restarts = n_restarts
+        self.jitter = jitter
 
     def _sigmoid(self, x):
         return 1.0 / (1.0 + np.exp(-x))
@@ -18,34 +20,56 @@ class GaussianProcessClassifier:
         self.X_train = np.asarray(X)
         self.y_train = np.asarray(y)
         self.f = np.zeros(len(self.y_train))
+
+        # Add jitter to the diagonal for numerical stability
         self.K = self.kernel(self.X_train, self.X_train)
+        self.K += np.eye(len(self.X_train)) * self.jitter
+
         self._laplace_approximation()
         return self
+
 
     def _laplace_approximation(self, max_iter=10, tol=1e-6):
         for i in range(max_iter):
             p = self._sigmoid(self.f)
-            W = p * (1 - p)
+            W = np.maximum(p * (1 - p), 1e-10)  # Ensure W is positive
             grad = (self.y_train - p)
-            hess = -np.diag(W)
-            B = np.eye(len(self.y_train)) + W[:, np.newaxis] * self.K
-            L = np.linalg.cholesky(B)
+
+            # Compute B = I + W^(1/2) K W^(1/2)
+            W_sqrt = np.sqrt(W)
+            B = np.eye(len(self.y_train)) + (W_sqrt[:, None] * self.K * W_sqrt[None, :])
+
+            # Add small diagonal term for numerical stability
+            B += np.eye(len(self.y_train)) * self.jitter
+
+            try:
+                L = np.linalg.cholesky(B)
+            except np.linalg.LinAlgError:
+                print("Warning: Adding more jitter for numerical stability")
+                B += np.eye(len(self.y_train)) * self.jitter * 10
+                L = np.linalg.cholesky(B)
+
             b = W * self.f + grad
             a = b - W * np.linalg.solve(L.T, np.linalg.solve(L, self.K @ b))
             f_new = self.K @ a
+
             if np.max(np.abs(f_new - self.f)) < tol:
                 break
             self.f = f_new
+
         self.W = W
         self.L = L
 
     def predict_proba(self, X):
         K_star = self.kernel(X, self.X_train)
         f_star_mean = K_star @ np.linalg.solve(self.L.T, np.linalg.solve(self.L, self.K @ (self.y_train - 0.5)))
+
+        # Compute predictive variance
         v = np.linalg.solve(self.L, K_star.T)
-        f_star_var = self.kernel(X, X) - v.T @ v
+        f_star_var = self.kernel(X, X) + self.jitter - v.T @ v
         f_star_var = np.clip(f_star_var, 1e-10, np.inf)
 
+        # Compute probabilities
         probas = self._sigmoid(f_star_mean / np.sqrt(1 + np.pi * f_star_var / 8))
         return np.vstack((1 - probas, probas)).T
 
@@ -150,6 +174,73 @@ class RBFKernel:
         return np.exp(-self.gamma * dist_matrix)
 
 
+def get_probability_distribution_at_time(gpc, X_normalized, t, price_range=0.5, n_points=100):
+    """
+    Compute the probability distribution at a specific time t.
+
+    Parameters:
+    -----------
+    gpc : GaussianProcessClassifier
+        Fitted Gaussian Process Classifier
+    X_normalized : array-like
+        Normalized training data used for computing statistics
+    t : float
+        The time point at which to compute the distribution
+    price_range : float
+        Range of prices to consider (as a fraction of the mean price)
+    n_points : int
+        Number of points to evaluate
+
+    Returns:
+    --------
+    dict containing:
+        prices: array of price points
+        probabilities: predicted probabilities
+        confidence_intervals: tuple of (lower_bound, upper_bound)
+    """
+    # Normalize the time point
+    t_normalized = (t - X_normalized.mean(axis=0)[0]) / X_normalized.std(axis=0)[0]
+
+    # Create price range
+    mean_price = X_normalized.mean(axis=0)[1]
+    std_price = X_normalized.std(axis=0)[1]
+    prices = np.linspace(mean_price - price_range, mean_price + price_range, n_points)
+
+    # Create test points
+    X_test = np.column_stack([np.full(n_points, t_normalized), prices])
+
+    # Compute posterior distribution
+    K_star = gpc.kernel(X_test, gpc.X_train)
+    f_star_mean = K_star @ np.linalg.solve(gpc.L.T, np.linalg.solve(gpc.L, gpc.K @ (gpc.y_train - 0.5)))
+
+    # Compute predictive variance
+    v = np.linalg.solve(gpc.L, K_star.T)
+    f_star_var = gpc.kernel(X_test, X_test) - v.T @ v
+    f_star_var = np.diag(f_star_var)
+    f_star_var = np.clip(f_star_var, 1e-10, np.inf)
+
+    # Compute probabilities and confidence intervals
+    kappa = 1.0 / np.sqrt(1 + np.pi * f_star_var / 8)
+    prob_accept = gpc._sigmoid(f_star_mean * kappa)
+
+    # 95% confidence intervals
+    z = norm.ppf(0.975)  # 95% confidence level
+    margin = z * np.sqrt(f_star_var)
+    lower_bound = gpc._sigmoid(f_star_mean - margin)
+    upper_bound = gpc._sigmoid(f_star_mean + margin)
+
+    # Convert normalized prices back to original scale
+    original_prices = prices * std_price + X_normalized.mean(axis=0)[1]
+
+    return {
+        'prices': original_prices,
+        'probabilities': prob_accept,
+        'confidence_intervals': (lower_bound, upper_bound)
+    }
+
+
+
+
 if __name__ == "__main__":
     np.random.seed(42)
 
@@ -162,7 +253,7 @@ if __name__ == "__main__":
     X_normalized = (X - X.mean(axis=0)) / X.std(axis=0)
 
     # Create and fit the model
-    kernel = RBFKernel(gamma=0.5)
+    kernel = RBFKernel(gamma=2)
     gpc = GaussianProcessClassifier(kernel=kernel)
     gpc.fit(X_normalized, y)
 
