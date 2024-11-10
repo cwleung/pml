@@ -76,16 +76,20 @@ class GaussianProcessClassifier:
     def predict(self, X):
         return np.argmax(self.predict_proba(X), axis=1)
 
-    def plot_decision_boundary(self, X, y, title="GP Classification", figsize=(15, 6)):
+    def plot_decision_boundary(self, X, y, X_test=None, y_test=None, title="GP Classification", figsize=(10, 8)):
         """
-        Plot the decision boundary, training points, and uncertainty regions with improved visualization
+        Plot the decision boundary, training points, and test predictions if available
 
         Parameters:
         -----------
         X : array-like of shape (n_samples, 2)
-            Training data (must be 2D for visualization)
+            Training data
         y : array-like of shape (n_samples,)
-            Target values
+            Training target values
+        X_test : array-like of shape (n_samples, 2), optional
+            Test data for predictions
+        y_test : array-like of shape (n_samples,), optional
+            True test values for comparison
         title : str
             Title for the plot
         figsize : tuple
@@ -94,75 +98,61 @@ class GaussianProcessClassifier:
         if X.shape[1] != 2:
             raise ValueError("This visualization only works with 2D input data")
 
-        # Create a mesh grid with adaptive resolution
+        # Create mesh grid
         margin = 0.5
         x_min, x_max = X[:, 0].min() - margin, X[:, 0].max() + margin
         y_min, y_max = X[:, 1].min() - margin, X[:, 1].max() + margin
 
-        # Adjust mesh resolution based on data range
-        range_x = x_max - x_min
-        range_y = y_max - y_min
-        h = min(range_x, range_y) / 100  # adaptive step size
-
+        h = min(x_max - x_min, y_max - y_min) / 100
         xx, yy = np.meshgrid(
             np.arange(x_min, x_max, h),
             np.arange(y_min, y_max, h)
         )
 
-        # Get predictions for all mesh points
+        # Get predictions for mesh points
         mesh_points = np.c_[xx.ravel(), yy.ravel()]
         probas = self.predict_proba(mesh_points)
-        uncertainty = -np.sum(probas * np.log(probas + 1e-10), axis=1)
         Z = probas[:, 1].reshape(xx.shape)
-        uncertainty = uncertainty.reshape(xx.shape)
 
-        # Create figure with two subplots
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
-        fig.suptitle(title, fontsize=14, y=1.05)
+        # Create figure
+        fig, ax = plt.subplots(figsize=figsize)
 
-        # Plot decision boundary
+        # Plot decision boundary with probability contours
         levels = np.linspace(0, 1, 20)
-        contour = ax1.contourf(xx, yy, Z, levels=levels, cmap='RdYlBu', alpha=0.8)
-        decision_boundary = ax1.contour(xx, yy, Z, levels=[0.5], colors='k', linestyles='--', linewidths=2)
+        contour = ax.contourf(xx, yy, Z, levels=levels, cmap='RdYlBu', alpha=0.7)
 
-        # Plot training points with larger markers and better contrast
-        scatter = ax1.scatter(X[:, 0], X[:, 1], c=y, cmap='RdYlBu',
-                              edgecolors='black', s=100, linewidth=1.5,
-                              norm=Normalize(vmin=0, vmax=1))
+        # Add decision boundary line
+        ax.contour(xx, yy, Z, levels=[0.5], colors='k', linestyles='--', linewidths=2)
 
-        # Add colorbar for decision boundary
-        plt.colorbar(contour, ax=ax1, label='Probability of Class 1')
+        # Plot training points
+        scatter_train = ax.scatter(X[:, 0], X[:, 1], c=y, cmap='RdYlBu',
+                                   edgecolors='black', s=100, linewidth=1.5,
+                                   norm=Normalize(vmin=0, vmax=1),
+                                   label='Training points')
 
-        ax1.set_title('Decision Boundary', pad=20)
-        ax1.set_xlabel('Time')
-        ax1.set_ylabel('Price')
+        # Plot test points if provided
+        if X_test is not None and y_test is not None:
+            scatter_test = ax.scatter(X_test[:, 0], X_test[:, 1],
+                                      c=y_test, cmap='RdYlBu',
+                                      marker='s', s=100,
+                                      edgecolors='black', linewidth=1.5,
+                                      norm=Normalize(vmin=0, vmax=1),
+                                      label='Test points')
 
-        # Plot uncertainty with improved colormap
-        uncertainty_levels = np.linspace(uncertainty.min(), uncertainty.max(), 20)
-        uncertainty_plot = ax2.contourf(xx, yy, uncertainty, levels=uncertainty_levels,
-                                        cmap='viridis', alpha=0.8)
+        ax.set_title(title, pad=20, fontsize=14)
+        ax.set_xlabel('Time', fontsize=12)
+        ax.set_ylabel('Price', fontsize=12)
 
-        # Plot training points on uncertainty plot
-        ax2.scatter(X[:, 0], X[:, 1], c=y, cmap='RdYlBu',
-                    edgecolors='black', s=100, linewidth=1.5,
-                    norm=Normalize(vmin=0, vmax=1))
+        # Add grid and legend
+        ax.grid(True, linestyle='--', alpha=0.3)
+        ax.legend(loc='upper right')
 
-        # Add colorbar for uncertainty
-        plt.colorbar(uncertainty_plot, ax=ax2, label='Predictive Uncertainty (Entropy)')
-
-        ax2.set_title('Predictive Uncertainty', pad=20)
-        ax2.set_xlabel('Time')
-        ax2.set_ylabel('Price')
-
-        # Set consistent axis limits and aspect ratio
-        for ax in [ax1, ax2]:
-            ax.set_xlim(x_min, x_max)
-            ax.set_ylim(y_min, y_max)
-            ax.set_aspect('equal')
-            ax.grid(True, linestyle='--', alpha=0.3)
+        # Set consistent axis limits
+        ax.set_xlim(x_min, x_max)
+        ax.set_ylim(y_min, y_max)
 
         plt.tight_layout()
-        return fig, (ax1, ax2)
+        return fig, ax
 
 
 class RBFKernel:
@@ -239,8 +229,6 @@ def get_probability_distribution_at_time(gpc, X_normalized, t, price_range=0.5, 
     }
 
 
-
-
 if __name__ == "__main__":
     np.random.seed(42)
 
@@ -257,43 +245,13 @@ if __name__ == "__main__":
     gpc = GaussianProcessClassifier(kernel=kernel)
     gpc.fit(X_normalized, y)
 
-    # Plot both normalized and unnormalized data
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(24, 12))
+    X_test_normalized = (X_test - X.mean(axis=0)) / X.std(axis=0)
 
-    # Plot unnormalized data
-    ax1.scatter(X[y == 1, 0], X[y == 1, 1], c='blue', label='Accepted', alpha=0.6)
-    ax1.scatter(X[y == 0, 0], X[y == 0, 1], c='red', label='Rejected', alpha=0.6)
-    ax1.set_xlabel('Time')
-    ax1.set_ylabel('Price')
-    ax1.set_title('Original Price-Time Data')
-    ax1.legend()
-    ax1.grid(True)
-
-    # Plot price distributions
-    bins = 30
-    ax2.hist(prices_accept, bins=bins, alpha=0.5, color='blue', label='Accepted')
-    ax2.hist(prices_reject, bins=bins, alpha=0.5, color='red', label='Rejected')
-    ax2.set_xlabel('Price')
-    ax2.set_ylabel('Frequency')
-    ax2.set_title('Price Distribution')
-    ax2.legend()
-    ax2.grid(True)
-
-    # Plot GP classification results
-    gpc.plot_decision_boundary(X_normalized, y, "GP Classification on Normalized Data")
-    plt.tight_layout()
+    # Plot with both training and test data
+    fig, ax = gpc.plot_decision_boundary(
+        X_normalized, y,
+        X_test=X_test_normalized if 'X_test_normalized' in locals() else None,
+        y_test=y_test if 'y_test' in locals() else None,
+        title="Decision Boundary for a seller accepting a given valuation"
+    )
     plt.show()
-
-    # Print summary statistics
-    print("\nSummary Statistics:")
-    print("\nAccepted Prices:")
-    print(f"Mean: {np.mean(prices_accept):.2f}")
-    print(f"Std Dev: {np.std(prices_accept):.2f}")
-    print(f"Min: {np.min(prices_accept):.2f}")
-    print(f"Max: {np.max(prices_accept):.2f}")
-
-    print("\nRejected Prices:")
-    print(f"Mean: {np.mean(prices_reject):.2f}")
-    print(f"Std Dev: {np.std(prices_reject):.2f}")
-    print(f"Min: {np.min(prices_reject):.2f}")
-    print(f"Max: {np.max(prices_reject):.2f}")
