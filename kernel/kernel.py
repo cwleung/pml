@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from math import sqrt
 
+import numpy as np
 import torch
 
 
@@ -23,6 +23,10 @@ class Kernel(ABC):
     def trig(self, X):
         """Compute the Cholesky decomposition of the kernel matrix."""
         return torch.linalg.cholesky(self.matrix(X), upper=True)
+
+    def diag(self, X):
+        """Compute the diagonal of the kernel matrix."""
+        return torch.diag(self.matrix(X))
 
     def __add__(self, other):
         return SumKernel(self, other)
@@ -54,13 +58,20 @@ class ProductKernel(Kernel):
 
 
 class LinearKernel(Kernel):
-    """Linear kernel with random bias."""
+    """Linear kernel with bias."""
 
-    def __init__(self):
-        self.b = torch.randn(1)
+    def __init__(self, c=1.0):  # Added variance parameter
+        self.c = c  # Variance parameter
+        self.b = torch.tensor(0.0)  # Fixed bias term
 
     def __call__(self, X, Y):
-        return self.b + torch.matmul(X, Y.T)
+        # Convert inputs to torch tensors if they aren't already
+        if not isinstance(X, torch.Tensor):
+            X = torch.tensor(X, dtype=torch.float32)
+        if not isinstance(Y, torch.Tensor):
+            Y = torch.tensor(Y, dtype=torch.float32)
+
+        return self.c * torch.matmul(X, Y.T) + self.b
 
 
 class ExponentialKernel(Kernel):
@@ -97,23 +108,55 @@ class PeriodicKernel(Kernel):
 
 
 class Matern3Kernel(Kernel):
-    """Matérn kernel with nu=3/2."""
-
-    def __init__(self, sigma):
+    def __init__(self, sigma, variance=1.0):
         self.sigma = sigma
+        self.variance = variance
 
     def __call__(self, X, Y):
-        r = torch.sqrt(torch.sum((X.unsqueeze(1) - Y.unsqueeze(0)) ** 2, dim=-1))
-        return (1 + sqrt(3) * r / self.sigma) * torch.exp(-sqrt(3) * r / self.sigma)
+        r = torch.sqrt(torch.sum((X.unsqueeze(1) - Y.unsqueeze(0)) ** 2, dim=-1) + 1e-12)
+        r = torch.clamp(r, min=1e-12)
+
+        sqrt3 = torch.sqrt(torch.tensor(3.0))
+        term = sqrt3 * r / self.sigma
+
+        return self.variance * torch.exp(-term) * (1.0 + term)
 
 
 class Matern5Kernel(Kernel):
-    """Matérn kernel with nu=5/2."""
-
-    def __init__(self, sigma):
+    def __init__(self, sigma, variance=1.0):
         self.sigma = sigma
+        self.variance = variance
 
     def __call__(self, X, Y):
-        r = torch.sqrt(torch.sum((X.unsqueeze(1) - Y.unsqueeze(0)) ** 2, dim=-1))
-        return (1 + sqrt(5) * r / self.sigma + 5 * r ** 2 / (3 * self.sigma ** 2)) * torch.exp(
-            -sqrt(5) * r / self.sigma)
+        r = torch.sqrt(torch.sum((X.unsqueeze(1) - Y.unsqueeze(0)) ** 2, dim=-1) + 1e-12)
+        r = torch.clamp(r, min=1e-12)
+
+        sqrt5 = torch.sqrt(torch.tensor(5.0))
+        term = sqrt5 * r / self.sigma
+        term2 = term ** 2
+
+        return self.variance * torch.exp(-term) * (1.0 + term + term2 / 3.0)
+
+
+class ScaleKernel(Kernel):
+    """Scale kernel - learns input scaling for any base kernel."""
+
+    def __init__(self, base_kernel, input_scale=1.0, output_scale=1.0):
+        self.base_kernel = base_kernel
+        # Using log scale for numerical stability
+        self.log_input_scale = torch.nn.Parameter(torch.tensor(np.log(input_scale), dtype=torch.float32))
+        self.log_output_scale = torch.nn.Parameter(torch.tensor(np.log(output_scale), dtype=torch.float32))
+
+    def __call__(self, X, Y):
+        if not isinstance(X, torch.Tensor):
+            X = torch.tensor(X, dtype=torch.float32)
+        if not isinstance(Y, torch.Tensor):
+            Y = torch.tensor(Y, dtype=torch.float32)
+
+        input_scale = torch.exp(self.log_input_scale)
+        output_scale = torch.exp(self.log_output_scale)
+
+        X_scaled = X * input_scale
+        Y_scaled = Y * input_scale
+
+        return output_scale * self.base_kernel(X_scaled, Y_scaled)
